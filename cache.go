@@ -40,7 +40,6 @@ func cacheAct(ActID int) (Act *dbAct, err error) {
 }
 
 
-//TODO 存在bug
 func cacheClassStatistics(classID int) (res *ResUserActStatistic, err error) {
 	users := make([]dbUser, 0)
 	err = db.Select(&users, "select * from `user` where `class`=?;", classID)
@@ -55,7 +54,7 @@ func cacheClassStatistics(classID int) (res *ResUserActStatistic, err error) {
 	}
 
 	logItem := make([]dbLog, 0)
-	err = db.Select(&logItem, "select * from `signin_log` where `act_id`=?;",class.ActID )
+	err = db.Select(&logItem, "select * from `signin_log` where `act_id`=? order by `log_id` desc;",class.ActID )
 	if err != nil {
 		return nil, err
 	}
@@ -75,15 +74,11 @@ func cacheClassStatistics(classID int) (res *ResUserActStatistic, err error) {
 
 	fC := 0
 	ufC := 0
+	usernameMap := make(map[int]string,len(logItem))
 	for i := range users {
 		if logMap[users[i].UserID] == 1 {
 			fC++
-			res.Data.FinishedList = append(res.Data.FinishedList, actStatisticUser{
-				Id:     fC,
-				Name:   users[i].Name,
-				Avatar: "null",
-			})
-
+			usernameMap[users[i].UserID] = users[i].Name
 		} else {
 			ufC++
 			res.Data.UnfinishedList = append(res.Data.UnfinishedList, actStatisticUser{
@@ -92,6 +87,16 @@ func cacheClassStatistics(classID int) (res *ResUserActStatistic, err error) {
 				Avatar: "null",
 			})
 		}
+	}
+
+	//对已完成的用户按照提交时间倒叙排列
+	for i:= range logItem{
+		res.Data.FinishedList = append(res.Data.FinishedList, actStatisticUser{
+			Id:     fC,
+			Name:   usernameMap[logItem[i].UserID],
+			Avatar: "null",
+		})
+		fC--
 	}
 
 	data, err := json.Marshal(res)

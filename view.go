@@ -54,5 +54,8 @@ func views(template string, params ...map[string]string) (html []byte) {
 		}
 	}
 
+	//替换版本
+	html = bytes.Replace(html, []byte("{{version}}"), []byte(BackEndVer), -1)
+
 	return
 }

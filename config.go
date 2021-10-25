@@ -15,7 +15,6 @@ type Struct struct {
 		BaseUrl    string `yaml:"base_url"`
 		ListenPort string `yaml:"listen_port"`
 		JwtKey     string `yaml:"jwt_key"`
-		Version    string `yaml:"version"`
 	} `yaml:"genenral"`
 	Db struct {
 		Server    string `yaml:"server"`
