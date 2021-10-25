@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+var BackEndVer string
 var router *gin.Engine
 var ssoClient *sso.Client
 var TZ = time.FixedZone("CST", 8*3600)
@@ -19,6 +20,10 @@ func main() {
 	getConfig()
 	initDB()
 	initRedis()
+
+	if BackEndVer == ""{
+		BackEndVer = "开发环境"
+	}
 
 	ssoClient = sso.NewClient(config.General.Production, config.SSO.ServiceName, config.SSO.ClientId, config.SSO.ClientSecret)
 
