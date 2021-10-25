@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no'/>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'/>
+  <meta name='renderer' content='webkit'>
+  <meta name='format-detection' content='telephone=no'>
+  <meta http-equiv='Cache-Control' content='no-siteapp'/>
+  <link href="/static/favicon.ico" type="image/x-icon" rel="shortcut icon">
+  <title>初始化 | 签到系统</title>
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+<body>
+<div id="app">
+  <v-app id="inspire">
+    <v-app-bar app>
+      <v-toolbar-title>签到系统(beta)</v-toolbar-title>
+    </v-app-bar>
+
+    <v-main>
+      <!--  -->
+      <v-container>
+        <div class="mt-12 mx-auto px-6">
+            <div class="text-h4 mb-5">
+                账号初始化
+            </div>
+            <div class="text-caption mb-5">
+                感谢您使用本系统，在开始之前，您需要完成账号的初始化。
+                <br>
+                如果您是管理员，您可以选择加入一个现存的班级，或建立一个新的班级，如选择新建班级，请在“班级代码”一栏输入<code>new</code>。
+            </div>
+            <v-text-field
+                label="班级代码"
+                v-model="class_code"
+                hint="请填写班级管理员提供的代码"
+                outlined
+            ></v-text-field>
+            <v-text-field
+                label="真实姓名"
+                v-model="name"
+                hint="一旦设置便无法更改"
+                outlined
+            ></v-text-field>
+            <div class="d-flex flex-row">
+                <v-btn depressed large
+                    @click="submit"
+                >
+                    提交
+                </v-btn>
+            </div>
+            
+        </div>
+      </v-container>
+
+      <v-dialog v-model="dialog.open" max-width="500px">
+        <v-card>
+          <v-card-title>{{dialog.title}}</v-card-title>
+          <v-card-text>
+              {{dialog.text}}
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="blue darken-1" text @click="dialog.open=!dialog.open">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+    </v-main>
+
+  </v-app>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.js"></script>
+<script>
+
+  const backEndUrl = "{{api_url}}";
+  new Vue({
+    el: '#app',
+    vuetify: new Vuetify(),
+    data:{
+        class_code:'',
+        name:'',
+      dialog:{
+          open:false,
+          title:'',
+          text:''
+      },
+    },
+    mounted:function(){
+      
+    },
+    methods:{
+        submit:function(){
+            let _this = this
+            if (this.class_code == "" || this.name == ""){
+                this.error("信息不能为空")
+                return
+            }
+            axios({
+                method: 'post',
+                url: backEndUrl+'/api/user/init',
+                data: {
+                    class_code: this.class_code,
+                    name: this.name,
+                }
+            }).then(function (res) {
+                // 处理成功情况
+                if (res.data.status == 0){
+                    setTimeout(function (){window.location.href = "/api/login?jwt="+res.data.data.new_jwt; },2000)
+                    _this.success("初始化成功")
+                }else{
+                    _this.error(res.data.msg)
+                }
+            })
+            .catch(function (error) {
+                // 处理错误情况
+                _this.error(error)
+            })
+        },
+        success:function(text){
+            this.dialog.open = true
+            this.dialog.title = '成功'
+            this.dialog.text = text
+        },
+        error:function(text){
+            this.dialog.open = true
+            this.dialog.title = '失败'
+            this.dialog.text = text
+        },
+    },
+    watch: {
+      
+    }
+  })
+</script>
+</body>
+</html>

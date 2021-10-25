@@ -1,0 +1,21 @@
+genenral:
+  production: false
+  base_url: "http://localhost:9093"
+  listen_port: "9093"
+  jwt_key: ""
+  version: "v0.0.0"
+
+db:
+  server: "127.0.0.1"
+  port: "3306"
+  username: "root"
+  password: "root"
+  db: "sign_in"
+  redis_addr: "localhost:6379"
+  redis_pwd: ""
+  redis_db: 0
+
+sso:
+  service_name: "签到助手"
+  client_id: ""
+  client_secret: ""
