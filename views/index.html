@@ -1,0 +1,647 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no'/>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'/>
+  <meta name='renderer' content='webkit'>
+  <meta name='format-detection' content='telephone=no'>
+  <meta http-equiv='Cache-Control' content='no-siteapp'/>
+  <link href="/static/favicon.ico" type="image/x-icon" rel="shortcut icon">
+  <title>签到系统</title>
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+<body>
+<div id="app">
+  <v-app id="inspire">
+    <v-app-bar app>
+      <v-toolbar-title>签到系统(beta)</v-toolbar-title>
+    </v-app-bar>
+
+    <v-main>
+      <!--  -->
+
+      <v-container
+          v-show="navi_bar == 0"
+      >
+      <!--首页-->
+      <v-card
+      class="mx-auto my-5"
+      max-width="400"
+    >
+      <v-img
+        class="white--text align-end"
+        height="200px"
+        :src="act_info.act_pic"
+      >
+        <v-card-title>{{act_info.act_name}}</v-card-title>
+      </v-img>
+  
+      <v-card-subtitle class="pb-0">
+        {{act_info.end_time}} 截止 已完成 {{sts.done}}/{{sts.total}}
+      </v-card-subtitle>
+  
+      <v-card-text class="text--primary pt-5">
+        <div>{{act_info.act_announcement}}</div>
+      </v-card-text>
+  
+      <v-card-actions>
+        <v-btn
+          color="orange"
+          :disabled="sign_btn.disabled"
+          @click="signin"
+          large
+          text
+        >
+          {{sign_btn.text}}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+
+        <v-card
+            class="mx-auto my-6"
+            max-width="400"
+        >
+            <v-list dense>
+                <v-subheader>未完成</v-subheader>
+                <v-list-item-group
+                    color="primary"
+                >
+                    <v-list-item
+                    v-for="(item,i) in sts.unfinished_list"
+                    :key="i"
+                    >
+                    <v-list-item-icon>
+                        <v-icon v-text="item.id"></v-icon>
+                      </v-list-item-icon>
+                      <v-list-item-content>
+                        <v-list-item-title v-text="item.name"></v-list-item-title>
+                      </v-list-item-content>
+                    </v-list-item>
+                </v-list-item-group>
+
+                <v-divider></v-divider>
+
+                <v-subheader>已完成</v-subheader>
+                <v-list-item-group
+                    color="primary"
+                >
+                    <v-list-item
+                    v-for="(item,i) in sts.finished_list"
+                    :key="i"
+                    >
+                    <v-list-item-icon>
+                        <v-icon v-text="item.id"></v-icon>
+                      </v-list-item-icon>
+                      <v-list-item-content>
+                        <v-list-item-title v-text="item.name"></v-list-item-title>
+                      </v-list-item-content>
+                    </v-list-item>
+                </v-list-item-group>
+            </v-list>
+        </v-card>
+
+      </v-container>
+
+      <v-container
+              v-show="navi_bar == 1"
+      >
+      <div class="pa-5">
+        <div class="text-h4 mb-5">
+          签到活动参与记录
+        </div>
+        <div class="text-caption">
+            点击右方小图标可查看活动详情。
+        </div>
+      </div>
+        <!--记录-->
+        <v-list three-line>
+          <template v-for="(item, index) in myActLog.list">
+
+            <v-list-item
+                    :key="index"
+            >
+              <v-list-item-avatar>
+                <v-icon>mdi-calendar-multiple-check</v-icon>
+              </v-list-item-avatar>
+
+              <v-list-item-content>
+                <v-list-item-title v-html="item.act_name"></v-list-item-title>
+                <v-list-item-subtitle >参与时间：{{item.date_time}}</v-list-item-subtitle>
+              </v-list-item-content>
+              <v-list-item-action>
+                <v-btn icon @click="view_act_info(item)">
+                  <v-icon color="grey lighten-1">mdi-information</v-icon>
+                </v-btn>
+              </v-list-item-action>
+            </v-list-item>
+          </template>
+        </v-list>
+      </v-container>
+
+      <v-container
+              v-show="navi_bar == 2"
+      >
+      <!-- 个人信息 -->
+      <v-card class="mx-3">
+        <v-parallax
+        dark
+          height="200px"
+          src="https://cdn.vuetifyjs.com/images/parallax/material2.jpg"
+        >
+          <v-app-bar
+            flat
+            color="rgba(0, 0, 0, 0)"
+          >
+
+            <v-toolbar-title class="text-h6 white--text pl-0">
+              个人信息
+            </v-toolbar-title>
+
+            <v-spacer></v-spacer>
+          </v-app-bar>
+
+          <v-card-title class="white--text mt-4">
+            <v-avatar size="56">
+                <v-icon>
+                    mdi-account
+                </v-icon>
+              <!-- <img
+                alt="user"
+                src=""
+              > -->
+            </v-avatar>
+            <div class="text-h5 ml-3">
+              {{myInfo.user_name}}
+            </div>
+            <br>
+          </v-card-title>
+          <v-card-subtitle>
+            <div class="d-flex flex-wrap">
+              <v-chip class="mx-2 mb-3" color="Default">UID:{{myInfo.user_id}}</v-chip>
+              <v-chip class="mx-2 mb-3" color="secondary">Email:{{myInfo.email}}</v-chip>
+              <v-chip class="mx-2 mb-3" color="primary">班级:{{myInfo.class_name}}</v-chip>
+              <v-chip class="mx-2 mb-3" color="orange">班级代码:{{myInfo.class_code}}</v-chip>
+              <v-chip class="mx-2 mb-3 white--text" color="red" v-if="myInfo.is_admin">管理员</v-chip>
+            </div>
+          </v-card-subtitle>
+        </v-parallax>
+        
+
+      <v-list-item-group color="primary">
+
+        <v-list-item @click="change_noti" link>
+          <v-list-item-icon>
+            <v-icon>mdi-alarm</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>修改通知方式</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-list-item href="/admin/" link v-if="myInfo.is_admin">
+          <v-list-item-icon>
+            <v-icon>mdi-account-tie</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>管理员面板</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
+        <v-list-item href="https://github.com/rroy233/signin-helper" link>
+          <v-list-item-icon>
+            <v-icon>mdi-xml</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>项目地址</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+        
+
+        <v-list-item @click="logout" link>
+          <v-list-item-icon>
+            <v-icon>mdi-logout</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>退出登录</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
+      </v-list-item-group>  
+
+      </v-card>
+        
+      </v-container>
+
+      <!-- 提示框 -->
+      <v-dialog v-model="dialog.open" max-width="500px">
+        <v-card>
+          <v-card-title>{{dialog.title}}</v-card-title>
+          <v-card-text>
+              {{dialog.text}}
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="blue darken-1" text @click="dialog.open=!dialog.open">OK</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- 加载框 -->
+      <v-dialog
+      v-model="loading_dialog"
+      hide-overlay
+      persistent
+      width="300"
+    >
+      <v-card
+        color="light-blue"
+        dark
+      >
+        <v-card-text class="mt-1">
+          加载中
+          <v-progress-linear
+            indeterminate
+            color="white"
+            class="mb-0"
+          ></v-progress-linear>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- 修改通知方式 -->
+    <v-dialog
+      v-model="change_noti_dialog"
+      persistent
+      max-width="600px"
+    >
+    <v-card>
+      <v-card-title>
+        <span class="text-h5">通知方式</span>
+      </v-card-title>
+      <v-card-text>
+        <v-container>
+          <!-- 表单内容 -->
+          <div class="text-body-1">
+            若选择“邮件通知”，若您未完成签到，系统将会在活动有效期内每天晚上6:30发送邮件提醒您。
+          </div>
+          <v-radio-group
+            v-model="noti_type"
+            row
+          >
+            <v-radio
+              label="关闭通知"
+              value="none"
+            ></v-radio>
+            <v-radio
+              label="邮件通知"
+              value="email"
+            ></v-radio>
+          </v-radio-group>
+          <small>后续版本将支持微信推送</small>
+
+        </v-container>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn
+          color="blue darken-1"
+          text
+          @click="change_noti_dialog = false"
+        >
+          关闭
+        </v-btn>
+        <v-btn
+          color="blue darken-1"
+          text
+          @click="submit_noti_type"
+        >
+          保存
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+    </v-dialog>
+
+    <!-- 活动详情 -->
+    <v-dialog v-model="actQueryDialog" max-width="500px">
+      <v-card>
+        <v-card-title>{{actQuery.name}}</v-card-title>
+        <v-card-text>
+          <div class="text-overline">头图</div><v-img :src="actQuery.pic" max-height="200px" ></v-img><v-divider></v-divider>
+        <div class="text-overline">活动公告</div>{{actQuery.announcement}}<v-divider></v-divider>
+        <div class="text-overline">签到完成提示语</div>{{actQuery.cheer_text}}<v-divider></v-divider>
+        <div class="text-overline">活动开始时间</div>{{actQuery.begin_time}}<v-divider></v-divider>
+        <div class="text-overline">活动结束时间</div>{{actQuery.end_time}}<v-divider></v-divider>
+        <div class="text-overline">创建时间</div>{{actQuery.create_time}}<v-divider></v-divider>
+        <div class="text-overline">更新时间</div>{{actQuery.update_time}}<v-divider></v-divider>
+        <div class="text-overline">创建人</div>{{actQuery.create_by}}<v-divider></v-divider>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="blue darken-1" text @click="actQueryDialog=!actQueryDialog">OK</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+
+    </v-main>
+    <v-bottom-navigation
+            v-model="navi_bar"
+            :background-color="color"
+            bottom
+            grow
+            dark
+            shift
+            app
+    >
+
+    <v-btn>
+      <span>签到</span>
+      <v-icon>mdi-calendar-check</v-icon>
+    </v-btn>
+      
+
+      <v-btn>
+        <span>签到记录</span>
+        <v-icon>mdi-calendar-search</v-icon>
+      </v-btn>
+
+      <v-btn>
+        <span>我的</span>
+        <v-icon>mdi-account</v-icon>
+      </v-btn>
+    </v-bottom-navigation>
+
+  </v-app>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.js"></script>
+<script>
+  const backEndUrl = "{{api_url}}";
+  new Vue({
+    el: '#app',
+    vuetify: new Vuetify(),
+    data:{
+      navi_bar:0,
+      badge:true,
+      dialog:{
+          open:false,
+          title:'',
+          text:''
+      },
+      change_noti_dialog:false,
+      loading_dialog:false,
+      actQueryDialog:false,
+      act_info:{
+          act_id:0,
+          act_name:"",
+          act_announcement:"",
+          act_pic:"",
+          begin_time:"",
+          end_time:"",
+          status:1,
+      },
+      sign_btn:{
+          disabled:true,
+          text:"签到",
+      },
+      sts:{
+        done:0,
+        total:0,
+        unfinished_list:[],
+        finished_list:[],
+      },
+      myInfo:{
+        user_id:0,
+        user_name:"",
+        email:"",
+        class_name:"",
+        class_code:"",
+        is_admin:0,
+      },
+      myActLog:[],
+      noti_type:"none",
+      actQuery:{
+        name:"",
+        announcement:"",
+        cheer_text:"",
+        pic:"",
+        begin_time:"",
+        end_time:"",
+        create_time:"",
+        update_time:"",
+        create_by:"",
+      },
+    },
+    mounted:function(){
+        this.initData()
+    },
+    methods:{
+        initData:function(){
+            //获取活动信息
+            let _this = this
+            this.loading_dialog = true
+            axios({
+                method: 'get',
+                url: backEndUrl+'/api/user/act/info',
+            }).then(function (res) {
+                if (res.data.status == 0){
+                    _this.act_info = res.data.data
+                    if (res.data.data.status == 0){
+                        _this.sign_btn.disabled = false
+                        _this.sign_btn.text = "签到" 
+                    }else{
+                        _this.sign_btn.disabled = true
+                        _this.sign_btn.text = "已签到" 
+                    }
+                }else{
+                    _this.error(res.data.msg)
+                }
+            }).catch(function (error) {
+                _this.error(error)
+            })
+
+            //获取统计数据
+            axios({
+                method: 'get',
+                url: backEndUrl+'/api/user/act/statistic',
+            }).then(function (res) {
+                // 处理成功情况
+                if (res.data.status == 0){
+                    _this.sts.done = res.data.data.done
+                    _this.sts.total = res.data.data.total
+                    _this.sts.unfinished_list = res.data.data.unfinished_list
+                    _this.sts.finished_list = res.data.data.finished_list
+                }else{
+                    _this.error(res.data.msg)
+                }
+            })
+            .catch(function (error) {
+                // 处理错误情况
+                _this.error(error)
+            })
+
+            //获取个人信息
+            axios({
+                method: 'get',
+                url: backEndUrl+'/api/user/profile',
+            }).then(function (res) {
+                // 处理成功情况
+                if (res.data.status == 0){
+                  _this.myInfo = res.data.data
+                }else{
+                    _this.error(res.data.msg)
+                }
+            })
+            .catch(function (error) {
+                // 处理错误情况
+                _this.error(error)
+            })
+
+            //获取参与记录
+            axios({
+                method: 'get',
+                url: backEndUrl+'/api/user/act/log',
+            }).then(function (res) {
+                // 处理成功情况
+                if (res.data.status == 0){
+                    _this.myActLog = res.data.data
+                  }else{
+                    _this.error(res.data.msg)
+                  }
+                _this.loading_dialog = false
+            })
+            .catch(function (error) {
+                // 处理错误情况
+                _this.error(error)
+            })
+        },
+        signin:function(){
+            let _this = this
+            axios({
+                method: 'post',
+                url: backEndUrl+'/api/user/act/signin',
+                data:{
+                    ts:String(Date.parse(new Date())),
+                }
+            }).then(function (res) {
+                if (res.data.status == 0){
+                    _this.success(res.data.data.text)
+                    _this.initData()
+                }else{
+                    _this.error(res.data.msg)
+                }
+            }).catch(function (error) {
+                _this.error(error)
+            })
+        },
+        logout:function(){
+          let _this = this
+          axios({
+              method: 'post',
+              url: backEndUrl+'/api/logout',
+          }).then(function (res) {
+              if (res.data.status == 0){
+                setTimeout(function (){window.location.href = "https://account.roy233.com/logout"; },1000)
+                  _this.success("即将登出")
+              }else{
+                  _this.error(res.data.msg)
+              }
+          }).catch(function (error) {
+              _this.error(error)
+          })
+        },
+        change_noti:function(){
+          let _this = this
+          axios({
+              method: 'get',
+              url: backEndUrl+'/api/user/noti/get',
+          }).then(function (res) {
+              if (res.data.status == 0){
+                _this.noti_type = res.data.data.noti_type
+                _this.change_noti_dialog = true
+              }else{
+                  _this.error(res.data.msg)
+              }
+          }).catch(function (error) {
+              _this.error(error)
+          })
+        },
+        submit_noti_type:function(){
+          let _this = this
+          axios({
+              method: 'post',
+              url: backEndUrl+'/api/user/noti/edit',
+              data:{
+                noti_type:_this.noti_type
+              }
+          }).then(function (res) {
+              if (res.data.status == 0){
+                _this.success("修改成功")
+                _this.change_noti_dialog = false
+              }else{
+                  _this.error(res.data.msg)
+              }
+          }).catch(function (error) {
+              _this.error(error)
+          })
+        },
+        view_act_info:function(item){
+          let _this = this
+          axios({
+              method: 'get',
+              url: backEndUrl+'/api/user/act/query',
+              params:{
+                act_id:item.act_id
+              }
+          }).then(function (res) {
+              if (res.data.status == 0){
+                console.log(res.data)
+                _this.actQuery = res.data.data
+                _this.actQueryDialog = true
+                //打开dialog
+              }else{
+                  _this.error(res.data.msg)
+              }
+          }).catch(function (error) {
+              _this.error(error)
+          })
+        },
+      success:function(text){
+            this.dialog.open = true
+            this.dialog.title = '成功'
+            this.dialog.text = text
+        },
+        error:function(text){
+            this.dialog.open = true
+            this.dialog.title = '失败'
+            this.dialog.text = text
+        },
+    },
+    watch: {
+
+    },
+    computed: {
+      color() {
+        switch (this.navi_bar) {
+          case 0:
+            return 'blue-grey'
+          case 1:
+            return 'teal'
+          case 2:
+            return 'brown'
+          case 3:
+            return 'indigo'
+          default:
+            return 'blue-grey'
+        }
+      },
+    },
+  })
+</script>
+</body>
+</html>
