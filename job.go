@@ -11,29 +11,29 @@ import (
 
 var crontab *cron.Cron
 
-var CronIDSend cron.EntryID
-var CronIDPrepare cron.EntryID
 
 func initJob() {
 	crontab = cron.New(cron.WithLocation(TZ))
 	var err error
 
 	//数据准备
-	//每天12:29
-	CronIDPrepare,err = crontab.AddFunc("29 12 * * ?",PrepareDailyNotification)
+	//每天12:29+18:29
+	_,err = crontab.AddFunc("29 12 * * ?",PrepareDailyNotification)
+	_,err = crontab.AddFunc("29 18 * * ?",PrepareDailyNotification)
 	if err != nil {
 		Logger.FATAL.Fatalln("[定时任务][异常]添加PrepareDailyNotification失败:",err)
 	}else{
-		Logger.Info.Println("[定时任务][成功]添加PrepareDailyNotification成功:",CronIDPrepare)
+		Logger.Info.Println("[定时任务][成功]添加PrepareDailyNotification成功")
 	}
 
 	//发送任务
-	//每天12:30
-	CronIDSend,err  = crontab.AddFunc("30 12 * * ?",SendDailyNotification)
+	//每天12:30+19:30
+	_,err  = crontab.AddFunc("30 12 * * ?",SendDailyNotification)
+	_,err  = crontab.AddFunc("30 18 * * ?",SendDailyNotification)
 	if err != nil {
 		Logger.FATAL.Fatalln("[定时任务][异常]添加SendDailyNotification失败:",err)
 	}else{
-		Logger.Info.Println("[定时任务][成功]添加SendDailyNotification成功:",CronIDSend)
+		Logger.Info.Println("[定时任务][成功]添加SendDailyNotification成功")
 	}
 
 	crontab.Start()
