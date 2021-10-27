@@ -54,6 +54,11 @@ type dbLog struct {
 	CreateTime string `json:"create_time" db:"create_time"`
 }
 
+type dbTplItem struct {
+	Title string `db:"title" json:"title"`
+	Body string `db:"body" json:"body"`
+}
+
 const (
 	NOTIFICATION_TYPE_NONE = iota
 	NOTIFICATION_TYPE_EMAIL
@@ -207,4 +212,14 @@ func getClassStatistics(classID int) (sts *ResUserActStatistic, err error) {
 		}
 	}
 	return sts, err
+}
+
+func queryUserName(adminID int) string {
+	name:=""
+	err := db.Get(&name, "select `name` from `user` where `user_id`=?", adminID)
+	if err != nil {
+		Logger.Info.Println("[DB]查询username失败", err)
+		return "未知"
+	}
+	return name
 }

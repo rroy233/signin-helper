@@ -1,8 +1,10 @@
 # db
 
-mysql数据库结构
+
 
 ## user用户表
+
+
 
 ### user_id 主键
 
@@ -137,6 +139,10 @@ varchar(40)
 ### tpl_id 主键
 
 ### msg_type 消息类型
+
+int
+
+### level 层次
 
 int
 

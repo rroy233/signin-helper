@@ -145,7 +145,7 @@ func adminActNewHandler(c *gin.Context) {
 		auth.UserID,
 	)
 	if err != nil {
-		Logger.Error.Println("[管理员][编辑活动信息]更新act数据库失败", err, auth)
+		Logger.Error.Println("[管理员][创建活动]更新act数据库失败", err, auth)
 		returnErrorJson(c, "更新失败，请联系管理员。(-1)")
 		return
 	}
@@ -154,19 +154,25 @@ func adminActNewHandler(c *gin.Context) {
 	//更新班级表
 	_, err = db.Exec("update `class` set `act_id`=? where `class_id`=?", actID, auth.ClassId)
 	if err != nil {
-		Logger.Error.Println("[管理员][编辑活动信息]更新class数据库失败", err, auth)
+		Logger.Error.Println("[管理员][创建活动]更新class数据库失败", err, auth)
 		returnErrorJson(c, "更新失败，请联系管理员。(-2)")
 		return
 	}
 
 	//更新缓存act+class
-	_, err = cacheAct(int(actID))
+	act, err := cacheAct(int(actID))
 	if err != nil {
-		Logger.Error.Println("[管理员][编辑活动信息]缓存活动更新失败", err, auth)
+		Logger.Error.Println("[管理员][创建活动]缓存活动更新失败", err, auth)
 	}
 	_, err = cacheClass(auth.ClassId)
 	if err != nil {
-		Logger.Error.Println("[管理员][编辑活动信息]缓存班级更新失败", err, auth)
+		Logger.Error.Println("[管理员][创建活动]缓存班级更新失败", err, auth)
+	}
+
+	//群发消息(待修改)
+	err = newActBulkSend(auth.ClassId,act)
+	if err != nil {
+		Logger.Debug.Println("[管理员][创建活动]群发时发生错误:", err, auth)
 	}
 
 	res := new(ResEmpty)

@@ -31,6 +31,14 @@ type Struct struct {
 		ClientId     string `yaml:"client_id"`
 		ClientSecret string `yaml:"client_secret"`
 	} `yaml:"sso"`
+	Mail struct{
+		SmtpServer string `yaml:"smtp_server"`
+		Port       string `yaml:"port"`
+		TLS bool `yaml:"tls"`
+		Username string `yaml:"username"`
+		Password string `yaml:"password"`
+		QueueBufferSize int `yaml:"queue_buffer_size"`
+	}`yaml:"mail"`
 }
 
 // getConfig 读取配置文件并返回
