@@ -83,6 +83,7 @@ func cacheClassStatistics(classID int) (res *ResUserActStatistic, err error) {
 			ufC++
 			res.Data.UnfinishedList = append(res.Data.UnfinishedList, actStatisticUser{
 				Id:     ufC,
+				UserID: users[i].UserID,
 				Name:   users[i].Name,
 				Avatar: "null",
 			})
@@ -93,6 +94,7 @@ func cacheClassStatistics(classID int) (res *ResUserActStatistic, err error) {
 	for i:= range logItem{
 		res.Data.FinishedList = append(res.Data.FinishedList, actStatisticUser{
 			Id:     fC,
+			UserID: 0,
 			Name:   usernameMap[logItem[i].UserID],
 			Avatar: "null",
 		})

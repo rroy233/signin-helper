@@ -166,7 +166,6 @@ func profileHandler(c *gin.Context) {
 		returnErrorJson(c, "查询失败")
 		return
 	}
-	Logger.Debug.Println(class)
 
 	res := new(ResUserProfile)
 	res.Status = 0
@@ -485,14 +484,7 @@ func UserActQueryHandler(c *gin.Context) {
 	res.Data.CreateTime = ts2DateString(act.CreateTime)
 
 	//查询创建人
-	adminName := ""
-	err = db.Get(&adminName, "select `name` from `user` where `user_id`=?", act.CreateBy)
-	if err != nil {
-		Logger.Info.Println("[查询活动详情]查询管理员失败", err, auth)
-		res.Data.CreateBy = "未知"
-	} else {
-		res.Data.CreateBy = adminName
-	}
+	res.Data.CreateBy = queryUserName(act.CreateBy)
 
 	c.JSON(200, res)
 	return

@@ -3,7 +3,6 @@ genenral:
   base_url: "http://localhost:9093"
   listen_port: "9093"
   jwt_key: ""
-  version: "v0.0.0"
 
 db:
   server: "127.0.0.1"
@@ -19,3 +18,11 @@ sso:
   service_name: "签到助手"
   client_id: ""
   client_secret: ""
+
+mail:
+  smtp_server: ""
+  port: "465"
+  tls: true
+  username: ""
+  password: ""
+  queue_buffer_size: 50

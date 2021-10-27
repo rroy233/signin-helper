@@ -128,6 +128,7 @@ type ResAdminClassInfo struct {
 //自定义数据结构
 type actStatisticUser struct {
 	Id     int    `json:"id"`
+	UserID int `json:"user_id"`
 	Name   string `json:"name"`
 	Avatar string `json:"avatar"`
 }
@@ -138,6 +139,7 @@ type resActLogItem struct {
 	ActName  string `json:"act_name"`
 	DateTime string `json:"date_time"`
 }
+
 
 //函数
 func errorRes(msg string) (r *ResEmpty) {
@@ -150,3 +152,5 @@ func errorRes(msg string) (r *ResEmpty) {
 func returnErrorJson(c *gin.Context, text string) {
 	c.JSON(200, errorRes(text))
 }
+
+

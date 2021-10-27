@@ -285,7 +285,9 @@
         <v-container>
           <!-- 表单内容 -->
           <div class="text-body-1">
-            若选择“邮件通知”，若您未完成签到，系统将会在活动有效期内每天晚上6:30发送邮件提醒您。
+            若您未完成签到，系统将会在活动有效期内每天中午12:30按照以下所选方式提醒您。
+            <br>
+            信息内会包含快捷登录系统的链接，请勿泄露哦。
           </div>
           <v-radio-group
             v-model="noti_type"
@@ -300,7 +302,7 @@
               value="email"
             ></v-radio>
           </v-radio-group>
-          <small>当前版本尚未支持通知。微信推送将在后续版本支持。</small>
+          <small>微信推送将在后续版本支持。</small>
 
         </v-container>
       </v-card-text>

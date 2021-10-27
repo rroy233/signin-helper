@@ -191,6 +191,7 @@ func killJwt(jID string) error {
 }
 
 func loginHandler(c *gin.Context) {
+	Logger.Debug.Println("ttt")
 	token := c.Query("jwt")
 	if token == "" {
 		returnErrorJson(c, "参数无效(-1)")
