@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
 	"net/url"
 	"signin/Logger"
@@ -20,8 +21,27 @@ type JWTStruct struct {
 	jwt.RegisteredClaims
 }
 
+type WxPusherCallback struct {
+	Action string `json:"action"`
+	Data   struct {
+		AppID       int    `json:"appId"`
+		AppKey      string `json:"appKey"`
+		AppName     string `json:"appName"`
+		Source      string `json:"source"`
+		UserName    string `json:"userName"`
+		UserHeadImg string `json:"userHeadImg"`
+		Time        int64  `json:"time"`
+		UID         string `json:"uid"`
+		Extra       string `json:"extra"`
+	} `json:"data"`
+}
+
 func (j *JWTStruct) ClassIdString() string {
 	return strconv.FormatInt(int64(j.ClassId), 10)
+}
+
+func (j *JWTStruct) UserIdString() string {
+	return strconv.FormatInt(int64(j.UserID), 10)
 }
 
 func ssoRedirectHandler(c *gin.Context) {
@@ -108,7 +128,6 @@ func ssoCallBackHandler(c *gin.Context) {
 	}
 
 	userInfo, err := ssoClient.GetUserInfo(accessToken)
-	Logger.Debug.Println("[sso]获取到:", userInfo)
 	if err != nil {
 		c.Data(200, ContentTypeHTML, views("error", map[string]string{
 			"text": "登录失败",
@@ -120,7 +139,6 @@ func ssoCallBackHandler(c *gin.Context) {
 	user := new(dbUser)
 	err = db.Get(user, "select * from `user` where `sso_uid`=?", userInfo.Userid)
 	if err != nil {
-		Logger.Debug.Println(err)
 		//未初始化
 		//定义管理员群组
 		isAdmin := 0
@@ -240,8 +258,54 @@ func logoutHandler(c *gin.Context) {
 }
 
 func wxpusherCallbackHandler(c *gin.Context) {
-	data,_ := c.GetRawData()
-	Logger.Info.Println(string(data))
+	callBackData := new(WxPusherCallback)
+	err := c.ShouldBindJSON(callBackData)
+	if err != nil {
+		Logger.Error.Println("[微信扫码回调]参数绑定失败:", err, c)
+		c.Status(400)
+		return
+	}
+
+	extra := callBackData.Data.Extra
+	wxUserid := callBackData.Data.UID
+	if wxUserid == ""{
+		Logger.Info.Println("[微信扫码回调]wxUserid为空:",c)
+		c.Status(400)
+		return
+	}
+
+	userID, err := rdb.Get(ctx, "SIGNIN_APP:Wechat_Bind:"+extra).Result()
+	token, err := rdb.Get(ctx, " SIGNIN_APP:Wechat_Bind:"+userID).Result()
+	if err != nil {
+		Logger.Info.Println("[微信扫码回调]参数无效:",err)
+		c.Status(400)
+		return
+	}
+	if userID == "" && token == ""{
+		c.Status(400)
+		return
+	}
+
+	//存储
+	_,err = db.Exec("update `user` set `wx_pusher_uid`=? where `user_id`=?",wxUserid,userID)
+	if err != nil {
+		Logger.Error.Println("[微信扫码回调]存储mysql失败:",err)
+		c.Status(400)
+		return
+	}
+
+	//设置redis
+	err = rdb.Set(ctx, "SIGNIN_APP:Wechat_Bind:"+extra, "DONE", redis.KeepTTL).Err()
+	err = rdb.Set(ctx, " SIGNIN_APP:Wechat_Bind:"+userID, "DONE",redis.KeepTTL).Err()
+	if err != nil {
+		Logger.Error.Println("[微信扫码回调]存储redis失败:",err)
+		c.Status(400)
+		return
+	}
+
+	c.Status(200)
+	return
+
 }
 
 func getAuthFromContext(c *gin.Context) (*JWTStruct, error) {

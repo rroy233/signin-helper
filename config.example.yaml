@@ -26,3 +26,6 @@ mail:
   username: ""
   password: ""
   queue_buffer_size: 50
+
+wx_pusher:
+  app_token: ""

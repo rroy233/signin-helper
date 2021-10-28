@@ -56,7 +56,7 @@ type dbLog struct {
 
 type dbTplItem struct {
 	Title string `db:"title" json:"title"`
-	Body string `db:"body" json:"body"`
+	Body  string `db:"body" json:"body"`
 }
 
 const (
@@ -215,7 +215,7 @@ func getClassStatistics(classID int) (sts *ResUserActStatistic, err error) {
 }
 
 func queryUserName(adminID int) string {
-	name:=""
+	name := ""
 	err := db.Get(&name, "select `name` from `user` where `user_id`=?", adminID)
 	if err != nil {
 		Logger.Info.Println("[DB]查询username失败", err)

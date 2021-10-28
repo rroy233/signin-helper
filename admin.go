@@ -170,7 +170,7 @@ func adminActNewHandler(c *gin.Context) {
 	}
 
 	//群发消息(待修改)
-	err = newActBulkSend(auth.ClassId,act)
+	err = newActBulkSend(auth.ClassId, act)
 	if err != nil {
 		Logger.Debug.Println("[管理员][创建活动]群发时发生错误:", err, auth)
 	}
@@ -324,7 +324,7 @@ func adminClassEditHandler(c *gin.Context) {
 	}
 
 	//校验班级代码
-	if form.ClassCode == "new"{
+	if form.ClassCode == "new" {
 		returnErrorJson(c, "班级代码不能为\"new\"")
 		return
 	}

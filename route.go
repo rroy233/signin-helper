@@ -6,6 +6,7 @@ import (
 
 func init() {
 	router = gin.Default()
+	gin.SetMode(gin.ReleaseMode)
 
 	router.GET("/", func(context *gin.Context) {
 		context.Redirect(302, "/user")
@@ -48,6 +49,9 @@ func init() {
 		userApiGroup.GET("/act/query", UserActQueryHandler)
 		userApiGroup.GET("/noti/get", UserNotiGetHandler)
 		userApiGroup.POST("/noti/edit", UserNotiEditHandler)
+
+		userApiGroup.GET("/wechat/qrcode", UserWechatQrcodeHandler)
+		userApiGroup.GET("/wechat/bind", UserWechatBindHandler)
 	}
 
 	//管理员api
