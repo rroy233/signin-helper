@@ -33,6 +33,7 @@ func init() {
 	router.GET("/api/ssoCallback", ssoCallBackHandler)
 	router.GET("/api/login", loginHandler)
 	router.POST("/api/logout", logoutHandler)
+	router.POST("/api/wxpusherCallback", wxpusherCallbackHandler)
 
 	//用户api
 	userApiGroup := router.Group("/api/user")
