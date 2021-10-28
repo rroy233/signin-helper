@@ -4,9 +4,9 @@
 
 ## TODO LIST
 
-- [ ] 实现邮箱通知
+- [x] 实现邮箱通知
 - [ ] 实现wx通知
-- [ ] 改用“骚话库”进行通知
+- [x] 改用“骚话库”进行通知
 - [ ] v1.x 多任务
 
 
@@ -161,7 +161,30 @@
   * noti_type
     * string
 
+### 2.10 /api/user/wechat/qrcode 获取微信绑定二维码
 
+* get
+* resp -> resUserWechatQrcode
+  * token
+  * qrcode_url
+
+**（请求此接口可以刷新Extra）**
+
+### 2.11 /api/user/wechat/qrcode/bind 微信绑定轮询接口
+
+* get
+
+* data
+
+  * token
+
+* resp -> empty
+
+  业务码(status)为0，即正在等待回调数据。
+
+  业务码为-1，即绑定失败（超时）或参数无效。
+
+  业务码为1，即绑定成功。
 
 
 
@@ -343,6 +366,24 @@
 [val] dailyNotifyJob{}
 
 [exp] -1
+
+### 5.7 微信绑定Extra=>user_id
+
+[key] SIGNIN_APP:Wechat_Bind:{{Extra}}
+
+[val] user_id (或为DONE，即已完成绑定)
+
+[exp] 30min
+
+### 5.8 微信绑定user_id=>Extra
+
+[key] SIGNIN_APP:Wechat_Bind:{{user_id}}
+
+[val] Extra (或为DONE，即已完成绑定)
+
+[exp] 30min
+
+
 
 ## 6. 自定义数据结构
 

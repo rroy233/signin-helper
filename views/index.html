@@ -202,6 +202,15 @@
           </v-list-item-content>
         </v-list-item>
 
+        <v-list-item @click="bind_wechat" link>
+          <v-list-item-icon>
+            <v-icon>mdi-wechat</v-icon>
+          </v-list-item-icon>
+          <v-list-item-content>
+            <v-list-item-title>绑定微信账号</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+
         <v-list-item href="/admin/" link v-if="myInfo.is_admin">
           <v-list-item-icon>
             <v-icon>mdi-account-tie</v-icon>
@@ -301,9 +310,11 @@
               label="邮件通知"
               value="email"
             ></v-radio>
+            <v-radio
+              label="微信通知"
+              value="wechat"
+            ></v-radio>
           </v-radio-group>
-          <small>微信推送将在后续版本支持。</small>
-
         </v-container>
       </v-card-text>
       <v-card-actions>
@@ -321,6 +332,38 @@
           @click="submit_noti_type"
         >
           保存
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+    </v-dialog>
+
+    <!-- 绑定微信 -->
+    <v-dialog
+      v-model="bind_wechat_dialog"
+      persistent
+      max-width="600px"
+    >
+    <v-card>
+      <v-card-title>
+        <span class="text-h5">绑定微信</span>
+      </v-card-title>
+      <v-card-text>
+        <v-container>
+          <!-- 内容 -->
+          <div class="text-body-1">微信推送功能借助第三方平台「WxPusher」实现，绑定后，系统将通过此平台向您推送通知。</div>
+          <v-img :src="wechat_bind_data.qrcode_url" alt="获取失败" class="mx-auto" max-width="200px"></v-img>
+          <div class="text-caption text-center">请使用微信扫描此处二维码</div>
+          <!-- 内容 -->
+        </v-container>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn
+          color="blue darken-1"
+          text
+          @click="bind_wechat"
+        >
+          关闭
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -397,6 +440,7 @@
       change_noti_dialog:false,
       loading_dialog:false,
       actQueryDialog:false,
+      bind_wechat_dialog:false,
       act_info:{
           act_id:0,
           act_name:"",
@@ -437,181 +481,239 @@
         update_time:"",
         create_by:"",
       },
+      wechat_bind_data:{
+        timer:false,
+        qrcode_url:"",
+        token:"",
+      },
     },
     mounted:function(){
         this.initData()
     },
     methods:{
-        initData:function(){
-            //获取活动信息
-            let _this = this
-            this.loading_dialog = true
-            axios({
-                method: 'get',
-                url: backEndUrl+'/api/user/act/info',
-            }).then(function (res) {
-                if (res.data.status == 0){
-                    _this.act_info = res.data.data
-                    if (res.data.data.status == 0){
-                        _this.sign_btn.disabled = false
-                        _this.sign_btn.text = "签到" 
-                    }else{
-                        _this.sign_btn.disabled = true
-                        _this.sign_btn.text = "已签到" 
-                    }
-                }else{
-                    _this.error(res.data.msg)
-                }
-            }).catch(function (error) {
-                _this.error(error)
-            })
-
-            //获取统计数据
-            axios({
-                method: 'get',
-                url: backEndUrl+'/api/user/act/statistic',
-            }).then(function (res) {
-                // 处理成功情况
-                if (res.data.status == 0){
-                    _this.sts.done = res.data.data.done
-                    _this.sts.total = res.data.data.total
-                    _this.sts.unfinished_list = res.data.data.unfinished_list
-                    _this.sts.finished_list = res.data.data.finished_list
-                }else{
-                    _this.error(res.data.msg)
-                }
-            })
-            .catch(function (error) {
-                // 处理错误情况
-                _this.error(error)
-            })
-
-            //获取个人信息
-            axios({
-                method: 'get',
-                url: backEndUrl+'/api/user/profile',
-            }).then(function (res) {
-                // 处理成功情况
-                if (res.data.status == 0){
-                  _this.myInfo = res.data.data
-                }else{
-                    _this.error(res.data.msg)
-                }
-            })
-            .catch(function (error) {
-                // 处理错误情况
-                _this.error(error)
-            })
-
-            //获取参与记录
-            axios({
-                method: 'get',
-                url: backEndUrl+'/api/user/act/log',
-            }).then(function (res) {
-                // 处理成功情况
-                if (res.data.status == 0){
-                    _this.myActLog = res.data.data
+      initData:function(){
+          //获取活动信息
+          let _this = this
+          this.loading_dialog = true
+          axios({
+              method: 'get',
+              url: backEndUrl+'/api/user/act/info',
+          }).then(function (res) {
+              if (res.data.status == 0){
+                  _this.act_info = res.data.data
+                  if (res.data.data.status == 0){
+                      _this.sign_btn.disabled = false
+                      _this.sign_btn.text = "签到" 
                   }else{
-                    _this.error(res.data.msg)
+                      _this.sign_btn.disabled = true
+                      _this.sign_btn.text = "已签到" 
                   }
-                _this.loading_dialog = false
-            })
-            .catch(function (error) {
-                // 处理错误情况
-                _this.error(error)
-            })
-        },
-        signin:function(){
-            let _this = this
-            axios({
-                method: 'post',
-                url: backEndUrl+'/api/user/act/signin',
-                data:{
-                    ts:String(Date.parse(new Date())),
-                }
-            }).then(function (res) {
-                if (res.data.status == 0){
-                    _this.success(res.data.data.text)
-                    _this.initData()
+              }else{
+                  _this.error(res.data.msg)
+              }
+          }).catch(function (error) {
+              _this.error(error)
+          })
+
+          //获取统计数据
+          axios({
+              method: 'get',
+              url: backEndUrl+'/api/user/act/statistic',
+          }).then(function (res) {
+              // 处理成功情况
+              if (res.data.status == 0){
+                  _this.sts.done = res.data.data.done
+                  _this.sts.total = res.data.data.total
+                  _this.sts.unfinished_list = res.data.data.unfinished_list
+                  _this.sts.finished_list = res.data.data.finished_list
+              }else{
+                  _this.error(res.data.msg)
+              }
+          })
+          .catch(function (error) {
+              // 处理错误情况
+              _this.error(error)
+          })
+
+          //获取个人信息
+          axios({
+              method: 'get',
+              url: backEndUrl+'/api/user/profile',
+          }).then(function (res) {
+              // 处理成功情况
+              if (res.data.status == 0){
+                _this.myInfo = res.data.data
+              }else{
+                  _this.error(res.data.msg)
+              }
+          })
+          .catch(function (error) {
+              // 处理错误情况
+              _this.error(error)
+          })
+
+          //获取参与记录
+          axios({
+              method: 'get',
+              url: backEndUrl+'/api/user/act/log',
+          }).then(function (res) {
+              // 处理成功情况
+              if (res.data.status == 0){
+                  _this.myActLog = res.data.data
                 }else{
-                    _this.error(res.data.msg)
+                  _this.error(res.data.msg)
                 }
-            }).catch(function (error) {
-                _this.error(error)
-            })
-        },
-        logout:function(){
+              _this.loading_dialog = false
+          })
+          .catch(function (error) {
+              // 处理错误情况
+              _this.error(error)
+          })
+      },
+      signin:function(){
           let _this = this
           axios({
               method: 'post',
-              url: backEndUrl+'/api/logout',
-          }).then(function (res) {
-              if (res.data.status == 0){
-                setTimeout(function (){window.location.href = "https://account.roy233.com/logout"; },1000)
-                  _this.success("即将登出")
-              }else{
-                  _this.error(res.data.msg)
-              }
-          }).catch(function (error) {
-              _this.error(error)
-          })
-        },
-        change_noti:function(){
-          let _this = this
-          axios({
-              method: 'get',
-              url: backEndUrl+'/api/user/noti/get',
-          }).then(function (res) {
-              if (res.data.status == 0){
-                _this.noti_type = res.data.data.noti_type
-                _this.change_noti_dialog = true
-              }else{
-                  _this.error(res.data.msg)
-              }
-          }).catch(function (error) {
-              _this.error(error)
-          })
-        },
-        submit_noti_type:function(){
-          let _this = this
-          axios({
-              method: 'post',
-              url: backEndUrl+'/api/user/noti/edit',
+              url: backEndUrl+'/api/user/act/signin',
               data:{
-                noti_type:_this.noti_type
+                  ts:String(Date.parse(new Date())),
               }
           }).then(function (res) {
               if (res.data.status == 0){
-                _this.success("修改成功")
-                _this.change_noti_dialog = false
+                  _this.success(res.data.data.text)
+                  _this.initData()
               }else{
                   _this.error(res.data.msg)
               }
           }).catch(function (error) {
               _this.error(error)
           })
-        },
-        view_act_info:function(item){
-          let _this = this
-          axios({
+      },
+      logout:function(){
+        let _this = this
+        axios({
+            method: 'post',
+            url: backEndUrl+'/api/logout',
+        }).then(function (res) {
+            if (res.data.status == 0){
+              setTimeout(function (){window.location.href = "https://account.roy233.com/logout"; },1000)
+                _this.success("即将登出")
+            }else{
+                _this.error(res.data.msg)
+            }
+        }).catch(function (error) {
+            _this.error(error)
+        })
+      },
+      change_noti:function(){
+        let _this = this
+        axios({
+            method: 'get',
+            url: backEndUrl+'/api/user/noti/get',
+        }).then(function (res) {
+            if (res.data.status == 0){
+              _this.noti_type = res.data.data.noti_type
+              _this.change_noti_dialog = true
+            }else{
+                _this.error(res.data.msg)
+            }
+        }).catch(function (error) {
+            _this.error(error)
+        })
+      },
+      submit_noti_type:function(){
+        let _this = this
+        axios({
+            method: 'post',
+            url: backEndUrl+'/api/user/noti/edit',
+            data:{
+              noti_type:_this.noti_type
+            }
+        }).then(function (res) {
+            if (res.data.status == 0){
+              _this.success("修改成功")
+              _this.change_noti_dialog = false
+            }else{
+                _this.error(res.data.msg)
+            }
+        }).catch(function (error) {
+            _this.error(error)
+        })
+      },
+      view_act_info:function(item){
+        let _this = this
+        axios({
+            method: 'get',
+            url: backEndUrl+'/api/user/act/query',
+            params:{
+              act_id:item.act_id
+            }
+        }).then(function (res) {
+            if (res.data.status == 0){
+              console.log(res.data)
+              _this.actQuery = res.data.data
+              _this.actQueryDialog = true
+              //打开dialog
+            }else{
+                _this.error(res.data.msg)
+            }
+        }).catch(function (error) {
+            _this.error(error)
+        })
+      },
+      bind_wechat:function(){
+        if(this.wechat_bind_data.timer){
+          this.bind_wechat_dialog = false
+          clearInterval(this.wechat_bind_data.timer)
+          this.wechat_bind_data.timer = null
+          return
+        }
+        let _this=this
+        axios({
               method: 'get',
-              url: backEndUrl+'/api/user/act/query',
-              params:{
-                act_id:item.act_id
-              }
+              url: backEndUrl+'/api/user/wechat/qrcode',
           }).then(function (res) {
+              // 处理成功情况
               if (res.data.status == 0){
-                console.log(res.data)
-                _this.actQuery = res.data.data
-                _this.actQueryDialog = true
-                //打开dialog
+                  _this.wechat_bind_data.qrcode_url = res.data.data.qrcode_url
+                  _this.wechat_bind_data.token = res.data.data.token
+                  _this.bind_wechat_dialog = true
+                  _this.wechat_bind_data.timer = setInterval(function(){
+                    _this.bind_wechat_query()
+                  }, 3000);
               }else{
                   _this.error(res.data.msg)
               }
-          }).catch(function (error) {
+          })
+          .catch(function (error) {
+              // 处理错误情况
               _this.error(error)
           })
-        },
+      },
+      bind_wechat_query:function(){
+        let _this=this
+        axios({
+              method: 'get',
+              url: backEndUrl+'/api/user/wechat/bind',
+              params:{
+                token:_this.wechat_bind_data.token
+              }
+          }).then(function (res) {
+              if (res.data.status == 0){
+                return
+              }else if (res.data.status == 1){
+                  _this.success("绑定成功")
+              }else if (res.data.status == -1){
+                  _this.error(res.data.msg)
+              }
+              _this.bind_wechat_dialog = false
+              clearInterval(_this.wechat_bind_data.timer)
+              _this.wechat_bind_data.timer = null
+          })
+          .catch(function (error) {
+              _this.error(error)
+          })
+      },
       success:function(text){
             this.dialog.open = true
             this.dialog.title = '成功'

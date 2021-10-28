@@ -22,12 +22,14 @@ func main() {
 	initRedis()
 	initMail()
 
-	if BackEndVer == ""{
+	if BackEndVer == "" {
 		BackEndVer = "开发环境"
 	}
 
 	//启动邮件发送后台进程
 	go mailSender(MailQueue)
+	//启动微信发送后台进程
+	go wechatSender(WechatQueue)
 
 	//启动定时任务
 	initJob()

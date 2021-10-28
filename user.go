@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	wx "github.com/wxpusher/wxpusher-sdk-go"
+	wxModel "github.com/wxpusher/wxpusher-sdk-go/model"
 	"signin/Logger"
 	"strconv"
 	"time"
@@ -44,63 +46,63 @@ func initHandler(c *gin.Context) {
 	//查询班级是否存在
 	classId := 0
 	err = db.Get(&classId, "select `class_id` from `class` where `class_code`=?", form.ClassCode)
-	if auth.IsAdmin==0 &&(err != nil || classId == 0) {
+	if auth.IsAdmin == 0 && (err != nil || classId == 0) {
 		returnErrorJson(c, "班级码无效")
 		return
 	}
 
 	//判断是否新建班级
-	if auth.IsAdmin == 1 && form.ClassCode == "new"{
+	if auth.IsAdmin == 1 && form.ClassCode == "new" {
 		//新建班级
-		dbretClass,err := db.Exec("INSERT INTO `class` (`class_id`, `name`, `class_code`, `total`, `act_id`) VALUES (NULL, ?, ?, ?, ?);",
+		dbretClass, err := db.Exec("INSERT INTO `class` (`class_id`, `name`, `class_code`, `total`, `act_id`) VALUES (NULL, ?, ?, ?, ?);",
 			"新建班级",
-			MD5_short(strconv.FormatInt(time.Now().UnixNano(),10)),
+			MD5_short(strconv.FormatInt(time.Now().UnixNano(), 10)),
 			0,
 			0,
-			)
+		)
 		if err != nil {
-			Logger.Error.Println("[初始化][管理员]创建班级失败",err,auth)
+			Logger.Error.Println("[初始化][管理员]创建班级失败", err, auth)
 			returnErrorJson(c, "创建班级失败")
 			return
 		}
-		tmpClass,err := dbretClass.LastInsertId()
+		tmpClass, err := dbretClass.LastInsertId()
 		classId = int(tmpClass)
 
 		//创建活动
-		dbretAct,err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`, `name`, `announcement`, `cheer_text`, `pic`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`) VALUES (NULL, ?, ?, ?, '恭喜', '', ?, ?, ?,?, ?);",
+		dbretAct, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`, `name`, `announcement`, `cheer_text`, `pic`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`) VALUES (NULL, ?, ?, ?, '恭喜', '', ?, ?, ?,?, ?);",
 			classId,
 			"新建活动",
 			"默认公告",
-			strconv.FormatInt(time.Now().Unix(),10),
-			strconv.FormatInt(time.Now().Unix(),10),
-			strconv.FormatInt(time.Now().Unix(),10),
-			strconv.FormatInt(time.Now().Unix(),10),
+			strconv.FormatInt(time.Now().Unix(), 10),
+			strconv.FormatInt(time.Now().Unix(), 10),
+			strconv.FormatInt(time.Now().Unix(), 10),
+			strconv.FormatInt(time.Now().Unix(), 10),
 			auth.UserID,
 		)
 		if err != nil {
-			Logger.Error.Println("[初始化][管理员]创建活动失败",err,auth)
+			Logger.Error.Println("[初始化][管理员]创建活动失败", err, auth)
 			returnErrorJson(c, "创建活动失败")
 			return
 		}
-		tmpAct,err := dbretAct.LastInsertId()
+		tmpAct, err := dbretAct.LastInsertId()
 		actId := int(tmpAct)
 
 		//更新班级actID
-		_,err = db.Exec("update `class` set `act_id`=? where `class_id`=?",actId,classId)
+		_, err = db.Exec("update `class` set `act_id`=? where `class_id`=?", actId, classId)
 		if err != nil {
-			Logger.Error.Println("[初始化][管理员]更新班级actID",err,auth)
+			Logger.Error.Println("[初始化][管理员]更新班级actID", err, auth)
 			returnErrorJson(c, "更新班级actID失败")
 			return
 		}
 
 		//更新缓存
-		_,err = cacheClass(classId)
+		_, err = cacheClass(classId)
 		if err != nil {
-			Logger.Error.Println("[初始化][管理员]更新class缓存",err,auth)
+			Logger.Error.Println("[初始化][管理员]更新class缓存", err, auth)
 		}
-		_,err = cacheAct(actId)
+		_, err = cacheAct(actId)
 		if err != nil {
-			Logger.Error.Println("[初始化][管理员]更新act缓存",err,auth)
+			Logger.Error.Println("[初始化][管理员]更新act缓存", err, auth)
 		}
 	}
 
@@ -247,6 +249,7 @@ func UserActStatisticHandler(c *gin.Context) {
 
 	c.JSON(200, res)
 }
+
 func UserActSigninHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {
@@ -345,6 +348,8 @@ func UserNotiGetHandler(c *gin.Context) {
 		res.Data.NotiType = "none"
 	} else if notiType == NOTIFICATION_TYPE_EMAIL {
 		res.Data.NotiType = "email"
+	}else if notiType == NOTIFICATION_TYPE_WECHAT {
+		res.Data.NotiType = "wechat"
 	}
 
 	c.JSON(200, res)
@@ -370,8 +375,24 @@ func UserNotiEditHandler(c *gin.Context) {
 		notiType = 0
 	} else if form.NotiType == "email" {
 		notiType = 1
-	} else {
+	} else if form.NotiType == "wechat" {
+		notiType = 2
+	} else{
 		returnErrorJson(c, "参数无效(-2)")
+		return
+	}
+
+	//检查是否绑定微信
+	wxID:=""
+	err = db.Get(&wxID,"select `wx_pusher_uid` from `user` where `user_id`=?",auth.UserID)
+	if err != nil {
+		Logger.Error.Println("[更改通知方式]查询mysql异常",err)
+		returnErrorJson(c, "系统异常")
+		return
+	}
+
+	if notiType == 2 && wxID == ""{
+		returnErrorJson(c, "您还未绑定微信")
 		return
 	}
 
@@ -489,4 +510,87 @@ func UserActQueryHandler(c *gin.Context) {
 	c.JSON(200, res)
 	return
 
+}
+
+func UserWechatQrcodeHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	res := new(ResUserWechatQrcode)
+	res.Status = 0
+
+	//判断是否已经绑定wx
+	dbWxId := ""
+	err = db.Get(&dbWxId, "select `wx_pusher_uid` from `user` where `user_id`=?", auth.UserID)
+	if err != nil {
+		Logger.Error.Println("[微信绑定]查询数据库失败", err)
+		returnErrorJson(c, "系统异常(-1)")
+		return
+	}
+	if rdb.Get(ctx, "SIGNIN_APP:Wechat_Bind:"+auth.UserIdString()).Val() == "DONE" || dbWxId != "" {
+		res.Status = -1
+		res.Msg = "您已完成绑定"
+		c.JSON(200, res)
+		return
+	}
+
+	//生成二维码地址
+	Token := MD5_short(strconv.FormatInt(time.Now().Unix(), 10))
+	err = rdb.Set(ctx, "SIGNIN_APP:Wechat_Bind:"+Token, auth.UserID, 30*time.Minute).Err()
+	err = rdb.Set(ctx, " SIGNIN_APP:Wechat_Bind:"+auth.UserIdString(), Token, 30*time.Minute).Err()
+	if err != nil {
+		Logger.Error.Println("[微信绑定]查询redis失败", err)
+		returnErrorJson(c, "系统异常(-2)")
+		return
+	}
+	qrcode := wxModel.Qrcode{AppToken: config.WxPusher.AppToken, Extra: Token}
+	qrcodeResp, err := wx.CreateQrcode(&qrcode)
+
+	res.Data.QrcodeUrl = qrcodeResp.Url
+	res.Data.Token = Token
+	c.JSON(200, res)
+}
+
+func UserWechatBindHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	token := c.Query("token")
+	if token == "" {
+		returnErrorJson(c, "参数无效(-1)")
+		return
+	}
+
+	//获取userid对应的extra
+	rByToken, err := rdb.Get(ctx, "SIGNIN_APP:Wechat_Bind:"+token).Result()
+	if rByToken == "" {
+		returnErrorJson(c, "参数无效(-2)")
+		return
+	}
+	rByUID, err := rdb.Get(ctx, " SIGNIN_APP:Wechat_Bind:"+auth.UserIdString()).Result()
+	if err != nil {
+		Logger.Error.Println("[微信绑定轮询]查询redis失败", err)
+		returnErrorJson(c, "系统异常(-1)")
+		return
+	}
+
+	res := new(ResEmpty)
+	res.Status = 0
+
+	//检查SIGNIN_APP:Wechat_Bind:{{user_id}}和 SIGNIN_APP:Wechat_Bind:{{Extra}}是否为DONE
+	if rByUID == "DONE" && rByToken == "DONE" {
+		res.Status = 1
+		res.Msg = "绑定成功"
+		c.JSON(200, res)
+		return
+	}
+
+	c.JSON(200, res)
+	return
 }
