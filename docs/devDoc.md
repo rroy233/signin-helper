@@ -368,6 +368,25 @@
   * string
   * 后端格式化
 
+### 6.3 微信扫码关注回调
+
+```go
+type WxPusherCallback struct {
+	Action string `json:"action"`
+	Data   struct {
+		AppID       int    `json:"appId"`
+		AppKey      string `json:"appKey"`
+		AppName     string `json:"appName"`
+		Source      string `json:"source"`
+		UserName    string `json:"userName"`
+		UserHeadImg string `json:"userHeadImg"`
+		Time        int64  `json:"time"`
+		UID         string `json:"uid"`
+		Extra       string `json:"extra"`
+	} `json:"data"`
+}
+```
+
 
 
 ## 7. 用户群组ID

@@ -239,6 +239,11 @@ func logoutHandler(c *gin.Context) {
 	return
 }
 
+func wxpusherCallbackHandler(c *gin.Context) {
+	data,_ := c.GetRawData()
+	Logger.Info.Println(string(data))
+}
+
 func getAuthFromContext(c *gin.Context) (*JWTStruct, error) {
 	i, exist := c.Get("auth")
 	if exist == false {
