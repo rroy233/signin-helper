@@ -303,6 +303,14 @@ func wxpusherCallbackHandler(c *gin.Context) {
 		return
 	}
 
+	//发送欢迎信息
+	task := new(NotifyJob)
+	task.NotificationType = NOTIFICATION_TYPE_WECHAT
+	task.Addr = wxUserid
+	task.Title = "【成功绑定】您已成功绑定微信账号"
+	task.Body = "请确保您处于\"接受信息\"(即不要关闭公众号的消息开关)，也不要\"删除订阅\"，如果出现问题导致无法推送，请联系管理员。"
+	WechatQueue <- task
+
 	c.Status(200)
 	return
 
