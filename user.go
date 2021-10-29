@@ -15,7 +15,7 @@ type FormDataUserInit struct {
 }
 
 type FormDataSignIn struct {
-	TS string `json:"ts" binding:"required"`
+	ActToken string `json:"act_token" binding:"required"`
 }
 
 type FormDataUserNotiEdit struct {
@@ -197,37 +197,58 @@ func UserActInfoHandler(c *gin.Context) {
 		return
 	}
 
-	//获取班级
-	act, err := getAct(class.ActID)
+	actList,err := getActIDs(auth.ClassId)
 	if err != nil {
-		Logger.Error.Println("[个人信息查询]活动信息查询失败:", err)
-		returnErrorJson(c, "查询失败(系统异常或是班级负责人配置错误)")
+		Logger.Error.Println("[个人信息查询]获取班级活动列表失败:", err)
+		returnErrorJson(c, "系统异常")
 		return
 	}
 
 	res := new(ResUserActInfo)
-	res.Status = 0
-	res.Data.ActID = act.ActID
-	res.Data.ActName = act.Name
-	res.Data.ActAnnouncement = act.Announcement
-	//判断是否需要使用默认图片
-	if act.Pic == "" {
-		res.Data.ActPic = "/static/image/default.jpg"
-	} else {
-		res.Data.ActPic = act.Pic
+	if len(actList) == 0{
+		res.Msg = "当前无生效中的活动"
+		c.JSON(200,res)
+		return
 	}
-	res.Data.BeginTime = ts2DateString(act.BeginTime)
-	res.Data.EndTime = ts2DateString(act.EndTime)
+	res.Data.List = make([]*userActInfo,0)
 
-	//查询是否已参与
-	logId := 0
-	_ = db.Get(&logId, "select `log_id` from `signin_log` where `user_id`=? and `act_id`=?",
-		auth.UserID,
-		act.ActID)
-	if logId == 0 {
-		res.Data.Status = 0 //未参与
-	} else {
-		res.Data.Status = 1 //已参与
+	for i := range actList{
+		actItem := new(userActInfo)
+		//获取班级
+		act, err := getAct(actList[i])
+		if err != nil {
+			Logger.Error.Println("[个人信息查询]活动信息查询失败:", err)
+			returnErrorJson(c, "查询失败(系统异常或是班级负责人配置错误)")
+			return
+		}
+
+		//存储actToken
+		actToken := MD5_short(strconv.FormatInt(time.Now().Unix(),10)+auth.UserIdString())
+		rdb.Set(ctx,"SIGNIN_APP:actToken:"+actToken,strconv.FormatInt(int64(act.ActID),10),10*time.Minute)
+
+		actItem.ActToken = actToken
+		actItem.ActName = act.Name
+		actItem.ActAnnouncement = act.Announcement
+		//判断是否需要使用默认图片
+		if act.Pic == "" {
+			actItem.ActPic = "/static/image/default.jpg"
+		} else {
+			actItem.ActPic = act.Pic
+		}
+		actItem.BeginTime = ts2DateString(act.BeginTime)
+		actItem.EndTime = ts2DateString(act.EndTime)
+
+		//查询是否已参与
+		logId := 0
+		_ = db.Get(&logId, "select `log_id` from `signin_log` where `user_id`=? and `act_id`=?",
+			auth.UserID,
+			act.ActID)
+		if logId == 0 {
+			actItem.Status = 0 //未参与
+		} else {
+			actItem.Status = 1 //已参与
+		}
+		res.Data.List = append(res.Data.List,actItem)
 	}
 
 	c.JSON(200, res)
@@ -288,8 +309,27 @@ func UserActSigninHandler(c *gin.Context) {
 		return
 	}
 
+	//查询活动id
+	actID,_ := strconv.Atoi(rdb.Get(ctx,"SIGNIN_APP:actToken:"+form.ActToken).Val())
+	if actID == 0{
+		Logger.Info.Println("[签到]查询活动id", err, auth)
+		returnErrorJson(c, "活动查询失败")
+		return
+	}
+
+	has,err := class.hasAct(actID)
+	if err != nil {
+		Logger.Error.Println("[签到]hasAct()报错", err)
+		returnErrorJson(c, "系统异常，请联系管理员")
+		return
+	}
+	if has == false{
+		returnErrorJson(c, "当前活动已无效")
+		return
+	}
+
 	//查找活动
-	act, err := getAct(class.ActID)
+	act, err := getAct(actID)
 	if err != nil {
 		Logger.Info.Println("[签到]活动查找失败", err, auth)
 		returnErrorJson(c, "参数无效(-4)")

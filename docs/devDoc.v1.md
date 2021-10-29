@@ -1,15 +1,24 @@
 # Back-End Dev Document
 
+v1.x版本
+
+## v1.x 变更
+
+* #2.3 /api/user/act/info 返回结果数据结构改变，用token代替id，返回数组
+  * resUserActInfo大改，部分属性转移至#6.4结构体
+* #2.4 /api/user/act/statistic 新增查询条件，用户使用token查询
+* #2.5 /api/user/act/signin params 改ts为act_token
+* 
+* #5.9~# redis
+
 
 
 ## TODO LIST
 
 - [x] 实现邮箱通知
-- [ ] 实现wx通知
+- [x] 实现wx通知
 - [x] 改用“骚话库”进行通知
 - [ ] v1.x 多任务
-
-
 
 
 
@@ -45,14 +54,18 @@
 初次设置后展示不予修改
 
 * post
+
 * data-json
+
   * calss_code
     * int
   * name
     * string
+
 * resp->resUserInit
+
   * new_jwt 新分配一个jwt
-  
+
     
 
 ### 2.2 /api/user/profile 获取个人信息
@@ -72,31 +85,43 @@
   * is_admin
     * int
 
-### 2.3 /api/user/act/info 获取活动信息
+### ~~2.3 /api/user/act/info 获取活动信息(v0)~~
+
+* ~~get~~
+* ~~resp->resUserActInfo~~
+  *  ~~act_id act_token~~
+    * ~~int string~~
+  * ~~act_name~~ 
+    * ~~string~~
+  * ~~act_announcement~~
+    * ~~string~~
+  * ~~act_pic~~
+    * ~~string~~
+  * ~~begin_time~~
+    * ~~string~~
+    * ~~后端作格式化~~
+  * ~~end_time~~
+    * ~~string~~
+    * ~~后端作格式化~~
+  * ~~status~~
+    * ~~int~~
+    * ~~我的参与情况，0为“未参与”，1为“已参与”~~
+
+### 2.3 /api/user/act/info 获取活动信息(v1)
 
 * get
 * resp->resUserActInfo
-  * act_id
-    * int
-  * act_name 
-    * string
-  * act_announcement
-    * string
-  * act_pic
-    * string
-  * begin_time
-    * string
-    * 后端作格式化
-  * end_time
-    * string
-    * 后端作格式化
-  * status
-    * int
-    * 我的参与情况，0为“未参与”，1为“已参与”
+  *  total
+  *  list
+     *  []userActInfo
+
+
 
 ### 2.4 /api/user/act/statistic 获取活动参与数据
 
 * get
+* params:
+  * act_token
 * resp -> resUserActStatistic
   * done
     * int
@@ -115,7 +140,7 @@
 
 * post
 * data - json
-  * ts:时间戳(秒)
+  * act_token
     * string
 * resp -> resUserSignin
   * text
@@ -383,7 +408,26 @@
 
 [exp] 30min
 
+### 5.9 actToken
 
+[key] SIGNIN_APP:actToken:{{token}}
+
+[val] act_id
+
+[exp] 10min
+
+### 5.10 当前班级正在生效的活动
+
+[key] SIGNIN_APP:Class_Active_Act:{{CLASS_ID}}
+
+[val]  CacheIDS
+
+[exp] 1min
+
+* 距离结束时间>1min
+  * easy
+* 距离结束时间<1min
+  * careful
 
 ## 6. 自定义数据结构
 
@@ -428,7 +472,38 @@ type WxPusherCallback struct {
 }
 ```
 
+### 6.4 userActInfo
 
+#2.3.1 用户首页获取活动列表
+
+*  act_token
+   * string
+*  act_name 
+   * string
+*  act_announcement
+   * string
+*  act_pic
+   * string
+*  begin_time
+   * string
+   * 后端作格式化
+*  end_time
+   * string
+   * 后端作格式化
+*  status
+   * int
+   * 我的参与情况，0为“未参与”，1为“已参与”
+
+### 6.11 CacheIDS 缓存活动信息
+
+* total
+  * int
+* easy
+  * 直接采用redis的值
+  * []int
+* careful
+  * 还需要查询一下mysql
+  * []int
 
 ## 7. 用户群组ID
 

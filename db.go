@@ -29,12 +29,12 @@ type dbClass struct {
 	Name      string `db:"name" json:"name"`
 	ClassCode string `db:"class_code" json:"class_code"`
 	Total     int    `db:"total" json:"total"`
-	ActID     int    `db:"act_id" json:"act_id"`
 }
 
 type dbAct struct {
 	ActID        int    `db:"act_id" json:"act_id"`
 	ClassID      int    `db:"class_id" json:"class_id"`
+	Active int `json:"active" db:"active"`
 	Name         string `db:"name" json:"name"`
 	Announcement string `db:"announcement" json:"announcement"`
 	CheerText    string `db:"cheer_text" json:"cheer_text"`
@@ -155,7 +155,6 @@ func getClass(classID int) (class *dbClass, err error) {
 	class = new(dbClass)
 	classCache := rdb.Get(ctx, "SIGNIN_APP:Class:"+strconv.FormatInt(int64(classID), 10)).Val()
 	if classCache == "" {
-		Logger.Info.Println("[DB]回源读取班级信息:", err)
 		//回源请求数据库，然后缓存
 		class, err = cacheClass(classID)
 		if err != nil {
@@ -193,6 +192,55 @@ func getAct(actID int) (act *dbAct, err error) {
 	return act, err
 }
 
+func getActIDs(classID int) (res []int, err error) {
+	ids := new(CacheIDS)
+	res = make([]int,0)
+
+	idsCache := rdb.Get(ctx, "SIGNIN_APP:Class_Active_Act:"+strconv.FormatInt(int64(classID), 10)).Val()
+	if idsCache == "" {
+		Logger.Debug.Println("[DB][getActIDs]回源读取信息:", err)
+		//回源请求数据库，然后缓存
+		ids, err = cacheIDs(classID)
+		if err != nil {
+			Logger.Error.Println("[DB][getActIDs]信息回源失败:", err)
+			return
+		}
+	} else {
+		err = json.Unmarshal([]byte(idsCache), &ids)
+		if err != nil {
+			Logger.Error.Println("[DB][getActIDs]解析信息缓存失败:", err)
+			return
+		}
+	}
+
+	//将easy的全部送入res
+	for i:=range ids.Easy{
+		res = append(res,ids.Easy[i])
+	}
+
+	//careful的回源查询mysql
+	for i:=range ids.Careful{
+		act := new(dbAct)
+		err = db.Get(act,"select * from `activity` where `act_id`=?",ids.Careful[i])
+		if err != nil {
+			Logger.Error.Println("[DB][getActIDs]careful的回源查询mysql失败:", err)
+			return
+		}
+		var et int64
+		et,err = strconv.ParseInt(ts2DateString(act.EndTime),10,64)
+		if err != nil {
+			Logger.Error.Println("[cache][cacheIDs]解析时间失败:", err)
+			return
+		}
+		if time.Now().Unix() <et{
+			//未过期
+			res = append(res,ids.Careful[i])
+		}
+	}
+
+	return res, err
+}
+
 func getClassStatistics(classID int) (sts *ResUserActStatistic, err error) {
 	sts = new(ResUserActStatistic)
 	stsCache := rdb.Get(ctx, "SIGNIN_APP:Class_Statistics::"+strconv.FormatInt(int64(classID), 10)).Val()
@@ -222,4 +270,16 @@ func queryUserName(adminID int) string {
 		return "未知"
 	}
 	return name
+}
+
+func existIn(src []int,val int)bool{
+	if len(src)==0{
+		return false
+	}
+	for i:=range src{
+		if src[i]==val{
+			return true
+		}
+	}
+	return false
 }

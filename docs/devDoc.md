@@ -45,14 +45,18 @@
 初次设置后展示不予修改
 
 * post
+
 * data-json
+
   * calss_code
     * int
   * name
     * string
+
 * resp->resUserInit
+
   * new_jwt 新分配一个jwt
-  
+
     
 
 ### 2.2 /api/user/profile 获取个人信息
