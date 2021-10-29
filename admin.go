@@ -180,6 +180,7 @@ func adminActNewHandler(c *gin.Context) {
 	c.JSON(200, res)
 }
 
+//TODO 根据begin_time and end_time 判断active
 func adminActEditHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {

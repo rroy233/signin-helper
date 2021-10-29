@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+type CacheIDS struct {
+	Total int `json:"total"`
+	Easy []int `json:"easy"`
+	Careful []int `json:"careful"`
+}
+
 func cacheClass(classID int) (class *dbClass, err error) {
 	class = new(dbClass)
 	err = db.Get(class, "select * from `class` where `class_id`=?", classID)
@@ -36,6 +42,58 @@ func cacheAct(ActID int) (Act *dbAct, err error) {
 		return
 	}
 	rdb.Set(ctx, "SIGNIN_APP:Act:"+strconv.FormatInt(int64(ActID), 10), data, 30*time.Second)
+	return
+}
+
+//部分缓存机制
+func cacheIDs(classID int) (ids *CacheIDS,err error) {
+	ids = new(CacheIDS)
+	ids.Easy = make([]int,0)
+	ids.Careful = make([]int,0)
+
+	acts := make([]dbAct,0)
+	err = db.Select(&acts,"select * from `activity` where `class_id`=? and `active`=?",classID,1)
+	if err != nil {
+		return nil,err
+	}
+	if len(acts)==0{
+		return ids,nil
+	}
+
+	for i:= range acts{
+		//不判断begin_time了
+		var et int64
+		et,err = strconv.ParseInt(ts2DateString(acts[i].EndTime),10,64)
+		if err != nil {
+			Logger.Error.Println("[cache][cacheIDs]解析时间失败:", err)
+			return
+		}
+
+		//判断是否过期
+		if time.Now().Unix()>et {
+			//更新active
+			_,err = db.Exec("update `activity` set `active` = ? where `act_id`=?",0,acts[i].ActID)
+			if err != nil {
+				Logger.Error.Println("[cache][cacheIDs]更新active失败:", err)
+				return
+			}
+			continue
+		}
+		if et - time.Now().Unix() > 1*60{//<1h >5min
+			ids.Easy = append(ids.Easy,acts[i].ActID)
+		}else if et - time.Now().Unix() < 1*60{
+			ids.Careful = append(ids.Careful,acts[i].ActID)
+		}
+	}
+
+	ids.Total = len(ids.Easy)+len(ids.Careful)
+
+	data, err := json.Marshal(ids)
+	if err != nil {
+		Logger.Error.Println("[cache][cacheIDs]信息回源读取,json失败:", err)
+		return
+	}
+	rdb.Set(ctx, "SIGNIN_APP:Class_Active_Act:"+strconv.FormatInt(int64(classID), 10), data, 1*time.Minute)
 	return
 }
 

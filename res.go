@@ -39,13 +39,8 @@ type ResUserProfile struct {
 type ResUserActInfo struct {
 	Res
 	Data struct {
-		ActID           int    `json:"act_id"`
-		ActName         string `json:"act_name"`
-		ActAnnouncement string `json:"act_announcement"`
-		ActPic          string `json:"act_pic"`
-		BeginTime       string `json:"begin_time"`
-		EndTime         string `json:"end_time"`
-		Status          int    `json:"status"`
+		Total int `json:"total"`
+		List []*userActInfo `json:"list"`
 	} `json:"data"`
 }
 
@@ -146,6 +141,16 @@ type resActLogItem struct {
 	ActId    int    `json:"act_id"`
 	ActName  string `json:"act_name"`
 	DateTime string `json:"date_time"`
+}
+
+type userActInfo struct {
+	ActToken           string    `json:"act_token"`
+	ActName         string `json:"act_name"`
+	ActAnnouncement string `json:"act_announcement"`
+	ActPic          string `json:"act_pic"`
+	BeginTime       string `json:"begin_time"`
+	EndTime         string `json:"end_time"`
+	Status          int    `json:"status"`
 }
 
 //函数
