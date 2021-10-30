@@ -54,10 +54,9 @@ func initHandler(c *gin.Context) {
 	//判断是否新建班级
 	if auth.IsAdmin == 1 && form.ClassCode == "new" {
 		//新建班级
-		dbretClass, err := db.Exec("INSERT INTO `class` (`class_id`, `name`, `class_code`, `total`, `act_id`) VALUES (NULL, ?, ?, ?, ?);",
+		dbretClass, err := db.Exec("INSERT INTO `class` (`class_id`, `name`, `class_code`, `total`) VALUES (NULL, ?, ?, ?);",
 			"新建班级",
 			MD5_short(strconv.FormatInt(time.Now().UnixNano(), 10)),
-			0,
 			0,
 		)
 		if err != nil {
@@ -87,13 +86,6 @@ func initHandler(c *gin.Context) {
 		tmpAct, err := dbretAct.LastInsertId()
 		actId := int(tmpAct)
 
-		//更新班级actID
-		_, err = db.Exec("update `class` set `act_id`=? where `class_id`=?", actId, classId)
-		if err != nil {
-			Logger.Error.Println("[初始化][管理员]更新班级actID", err, auth)
-			returnErrorJson(c, "更新班级actID失败")
-			return
-		}
 
 		//更新缓存
 		_, err = cacheClass(classId)
@@ -189,13 +181,6 @@ func UserActInfoHandler(c *gin.Context) {
 		return
 	}
 
-	//获取班级
-	class, err := getClass(auth.ClassId)
-	if err != nil {
-		Logger.Error.Println("[个人信息查询]班级信息查询失败:", err)
-		returnErrorJson(c, "查询失败")
-		return
-	}
 
 	actList,err := getActIDs(auth.ClassId)
 	if err != nil {
@@ -214,7 +199,6 @@ func UserActInfoHandler(c *gin.Context) {
 
 	for i := range actList{
 		actItem := new(userActInfo)
-		//获取班级
 		act, err := getAct(actList[i])
 		if err != nil {
 			Logger.Error.Println("[个人信息查询]活动信息查询失败:", err)
@@ -223,7 +207,7 @@ func UserActInfoHandler(c *gin.Context) {
 		}
 
 		//存储actToken
-		actToken := MD5_short(strconv.FormatInt(time.Now().Unix(),10)+auth.UserIdString())
+		actToken := MD5_short(strconv.FormatInt(time.Now().UnixNano(),10)+auth.UserIdString())
 		rdb.Set(ctx,"SIGNIN_APP:actToken:"+actToken,strconv.FormatInt(int64(act.ActID),10),10*time.Minute)
 
 		actItem.ActToken = actToken
@@ -249,6 +233,7 @@ func UserActInfoHandler(c *gin.Context) {
 			actItem.Status = 1 //已参与
 		}
 		res.Data.List = append(res.Data.List,actItem)
+		res.Data.Total++
 	}
 
 	c.JSON(200, res)
@@ -263,9 +248,42 @@ func UserActStatisticHandler(c *gin.Context) {
 		return
 	}
 
-	res, err := getClassStatistics(auth.ClassId)
+	actToken := c.Query("act_token")
+	if actToken==""{
+		returnErrorJson(c, "参数无效")
+		return
+	}
+
+	actID,err := queryActIdByActToken(actToken)
+	if err != nil {
+		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
+		returnErrorJson(c, "参数无效(-2)")
+		return
+	}
+
+	sts, err := getActStatistics(actID)
 	if err != nil {
 		returnErrorJson(c, err.Error())
+	}
+
+	res := new(ResUserActStatistic)
+	res.Status = 0
+	res.Data.Done = sts.Done
+	res.Data.Total = sts.Total
+	res.Data.FinishedList = make([]actStatisticUser,0)
+	res.Data.UnfinishedList = make([]actStatisticUser,0)
+
+	for i:=range sts.FinishedList{
+		res.Data.FinishedList = append(res.Data.FinishedList,actStatisticUser{
+			Id: sts.FinishedList[i].Id,
+			Name: sts.FinishedList[i].Name,
+		})
+	}
+	for i:=range sts.UnfinishedList{
+		res.Data.UnfinishedList = append(res.Data.UnfinishedList,actStatisticUser{
+			Id: sts.UnfinishedList[i].Id,
+			Name: sts.UnfinishedList[i].Name,
+		})
 	}
 
 	c.JSON(200, res)
@@ -286,53 +304,26 @@ func UserActSigninHandler(c *gin.Context) {
 		return
 	}
 
-	//解析时间戳
-	//ts, err := strconv.ParseInt(form.TS, 10, 64)
-	//if err != nil {
-	//	Logger.Info.Println("[签到]解析时间戳失败", err, auth)
-	//	returnErrorJson(c, "参数无效(-2)")
-	//	return
-	//}
-	//nowTs := time.Now().Unix()
-	//if !(ts <= nowTs && ts > nowTs-2) && config.General.Production == true {
-	//	Logger.Info.Println("[签到]时间戳不合法->", ts, nowTs, auth)
-	//	returnErrorJson(c, "参数无效(-3)")
-	//	return
-	//}
-
-	//TODO 性能优化
-	//获取班级
-	class, err := getClass(auth.ClassId)
+	//查询正在生效的活动id
+	ActiveActIDs,err := getActIDs(auth.ClassId)
 	if err != nil {
-		Logger.Info.Println("[签到]班级查找失败", err, auth)
-		returnErrorJson(c, "系统异常")
+		Logger.Error.Println("[签到]活动id查找失败", err, auth)
+		returnErrorJson(c, "系统异常(-1)")
 		return
 	}
 
-	//查询活动id
-	actID,_ := strconv.Atoi(rdb.Get(ctx,"SIGNIN_APP:actToken:"+form.ActToken).Val())
-	if actID == 0{
-		Logger.Info.Println("[签到]查询活动id", err, auth)
-		returnErrorJson(c, "活动查询失败")
-		return
-	}
-
-	has,err := class.hasAct(actID)
+	//从redis查找活动id
+	actID,err := queryActIdByActToken(form.ActToken)
 	if err != nil {
-		Logger.Error.Println("[签到]hasAct()报错", err)
-		returnErrorJson(c, "系统异常，请联系管理员")
-		return
-	}
-	if has == false{
-		returnErrorJson(c, "当前活动已无效")
+		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
+		returnErrorJson(c, "参数无效(-2)")
 		return
 	}
 
-	//查找活动
-	act, err := getAct(actID)
-	if err != nil {
-		Logger.Info.Println("[签到]活动查找失败", err, auth)
-		returnErrorJson(c, "参数无效(-4)")
+	//判断是否正在生效
+	if existIn(ActiveActIDs,actID)==false{
+		Logger.Info.Println("[签到]从redis查找活动，活动已失效", auth)
+		returnErrorJson(c, "当前活动已过期")
 		return
 	}
 
@@ -340,17 +331,25 @@ func UserActSigninHandler(c *gin.Context) {
 	logId := 0
 	_ = db.Get(&logId, "select `log_id` from `signin_log` where `user_id`=? and `act_id`=?",
 		auth.UserID,
-		act.ActID)
+		actID)
 	if logId != 0 {
 		Logger.Info.Println("[签到]重复参与", err, auth)
-		returnErrorJson(c, "请勿重复签到")
+		returnErrorJson(c, "请勿重复参与")
+		return
+	}
+
+	//活动活动信息
+	act,err := getAct(actID)
+	if err != nil {
+		Logger.Info.Println("[签到]获取活动信息失败",err, auth)
+		returnErrorJson(c, "系统异常(-2)")
 		return
 	}
 
 	//写入log表
 	_, err = db.Exec("INSERT INTO `signin_log` (`log_id`, `class_id`, `act_id`, `user_id`, `create_time`) VALUES (NULL, ?, ?, ?, ?);",
 		auth.ClassId,
-		act.ActID,
+		actID,
 		auth.UserID,
 		strconv.FormatInt(time.Now().Unix(), 10))
 	if err != nil {
@@ -507,14 +506,20 @@ func UserActQueryHandler(c *gin.Context) {
 		return
 	}
 
-	actId, err := strconv.Atoi(c.Query("act_id"))
-	if err != nil || actId == 0 {
-		Logger.Info.Println("[查询活动详情]过滤参数", err, auth)
+	actToken := c.Query("act_token")
+	if actToken == ""{
 		returnErrorJson(c, "参数无效(-1)")
 		return
 	}
 
-	act, err := getAct(actId)
+	actID,err := queryActIdByActToken(actToken)
+	if err != nil {
+		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
+		returnErrorJson(c, "参数无效(-2)")
+		return
+	}
+
+	act, err := getAct(actID)
 	if err != nil {
 		Logger.Info.Println("[查询活动详情]查询活动", err, auth)
 		returnErrorJson(c, "参数无效(-2)")

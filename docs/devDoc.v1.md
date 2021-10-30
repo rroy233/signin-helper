@@ -6,10 +6,26 @@ v1.x版本
 
 * #2.3 /api/user/act/info 返回结果数据结构改变，用token代替id，返回数组
   * resUserActInfo大改，部分属性转移至#6.4结构体
-* #2.4 /api/user/act/statistic 新增查询条件，用户使用token查询
-* #2.5 /api/user/act/signin params 改ts为act_token
-* 
+* #2.4 /api/user/act/statistic
+  * 新增请求字段act_token，用户使用token查询
+* #2.5 /api/user/act/signin params
+  * 请求字段改ts为act_token
+* #3.1 /api/admin/act/info
+  * 新增查询条件act_id。查询单个活动
+  * 返回新增active字段
+* #3.2 /api/admin/act/new 
+  * 删除请求字段start_time
+  * **需要强制更新活动id缓存**
+* #3.3 /api/admin/act/edit
+  * 新增请求字段act_id，active，使用act_id编辑单个活动
+  * 去除请求字段begin_time。默认开始时间为发布的时间，一旦将active置为1，就更新begin_time
+  * **需要强制更新活动id缓存**
+* 新增 #3.4 /api/admin/act/statistic 接口
+*  #3.5 /api/admin/class/info
+  * 删除活动相关字段
+* 新增 #3.7 /api/admin/act/list 接口
 * #5.9~# redis
+* 删除 #5.5 Class_Statistic
 
 
 
@@ -19,6 +35,7 @@ v1.x版本
 - [x] 实现wx通知
 - [x] 改用“骚话库”进行通知
 - [ ] v1.x 多任务
+- [ ] 细化通知机制
 
 
 
@@ -215,13 +232,16 @@ v1.x版本
 
 ## 3. 管理端API
 
-### 3.1 /api/admin/act/info
+### 3.1 /api/admin/act/info 返回单个活动信息
 
 获取当前的活动
 
 * get
+* params
+  * act_id
 * resp -> resAdminActInfo
   * name
+  * active
   * announcement
   * pic
   * cheer_text
@@ -232,57 +252,55 @@ v1.x版本
     * d
     * t
 
-### 3.2 /api/admin/act/new
-
-新建活动来覆盖掉旧活动
+### 3.2 /api/admin/act/new 新建活动
 
 * post
-* data -> formDataAdminAct json
+* data -> FormDataAdminActNew json
   * name
   * announcement
   * pic
   * cheer_text
-  * begin_time
-    * d
-    * t
   * end_time
     * d
     * t
 
-### 3.3 /api/admin/act/edit
+### 3.3 /api/admin/act/edit 编辑活动
 
-修改当前活动
+修改指定活动
 
 * post
-* data -> formDataAdminAct json
+* data
+  * act_id
+* data -> FormDataAdminActEdit json
   * name
+  * active
   * announcement
   * pic
   * cheer_text
-  * begin_time
-    * d
-    * t
   * end_time
     * d
     * t
 
-### 3.4 /api/admin/act/history
+### 3.4 /api/admin/act/statistic 某次活动的统计数据
 
 获取历史活动完成名单
 
 * get
-* resp -> ResAdminActHistory
-  * id
-    * 顺序id
-  * user_id
-  * user_name
+* params
   * act_id
-  * act_name
-  * act_sort_id
-    * 活动内排名
-  * datetime
+* resp -> ResAdminActStatistic
+  * done
+    * int
+    * 参与人数
+  * total
+    * int
+    * 总人数
+  * unfinished_list
+    * []AdminActStatisticItem
+  * finished_list
+    * []AdminActStatisticItem
 
-### 3.5 /api/admin/class/info
+### 3.5 /api/admin/class/info 获取班级信息
 
 获取班级信息
 
@@ -294,14 +312,22 @@ v1.x版本
   * act_id
   * act_name
 
-### 3.6 /api/admin/class/edit
+### 3.6 /api/admin/class/edit 编辑班级信息
 
 * post
 * data -> formDataAdminClass json
   * class_name
   * class_code
 
+### 3.7 /api/admin/act/list 活动列表
 
+* get
+* resp -> resAdminActList
+  * active_num
+  * active_list
+    * []adminActListItem
+  * history_list
+    * []adminActListItem
 
 
 
@@ -346,7 +372,7 @@ v1.x版本
 
 [exp] 1h
 
-### 5.2 sso 存储state
+### 5.2 sso state 存储state
 
 [key]  SIGNIN_APP:state:{state}
 
@@ -354,7 +380,7 @@ v1.x版本
 
 [exp] 5min
 
-### 5.3 班级信息缓存
+### 5.3 Class班级信息缓存
 
 [key] SIGNIN_APP:Class:{CLASS_ID}
 
@@ -364,7 +390,7 @@ v1.x版本
 
 **回源，用于读取班级的基本信息，管理员更新是手动刷新缓存**
 
-### 5.4 活动信息缓存
+### 5.4 Act活动信息缓存
 
 [key] SIGNIN_APP:Act:{ACT_ID}
 
@@ -374,17 +400,17 @@ v1.x版本
 
 **回源，用于读取活动的基本信息，管理员更新是手动刷新缓存**
 
-### 5.5 班级统计结果缓存
+### ~~5.5 Class_Statistics班级统计结果缓存~~
 
-[key] SIGNIN_APP:Class_Statistics:{CLASS_ID}
+~~[key] SIGNIN_APP:Class_Statistics:{CLASS_ID}~~
 
-[val] resUserActStatistic{}
+~~[val] resUserActStatistic{}~~
 
-[exp] 10 s
+~~[exp] 10 s~~
 
-**回源，用于读取活动的基本信息，管理员更新是手动刷新缓存**
+~~回源，用于读取活动的基本信息，管理员更新是手动刷新缓存~~
 
-### 5.6 每日提醒消息列表
+### 5.6 NOTI_LIST每日提醒消息列表
 
 [key] SIGNIN_APP:NOTI_LIST
 
@@ -392,7 +418,7 @@ v1.x版本
 
 [exp] -1
 
-### 5.7 微信绑定Extra=>user_id
+### 5.7 Wechat_Bind微信绑定Extra=>user_id
 
 [key] SIGNIN_APP:Wechat_Bind:{{Extra}}
 
@@ -400,7 +426,7 @@ v1.x版本
 
 [exp] 30min
 
-### 5.8 微信绑定user_id=>Extra
+### 5.8 Wechat_Bind微信绑定user_id=>Extra
 
 [key] SIGNIN_APP:Wechat_Bind:{{user_id}}
 
@@ -408,7 +434,7 @@ v1.x版本
 
 [exp] 30min
 
-### 5.9 actToken
+### 5.9 actToken 用户活动查询凭证
 
 [key] SIGNIN_APP:actToken:{{token}}
 
@@ -416,7 +442,7 @@ v1.x版本
 
 [exp] 10min
 
-### 5.10 当前班级正在生效的活动
+### 5.10 Class_Active_Act当前班级正在生效的活动
 
 [key] SIGNIN_APP:Class_Active_Act:{{CLASS_ID}}
 
@@ -429,17 +455,25 @@ v1.x版本
 * 距离结束时间<1min
   * careful
 
+### 5.11 Act_Statistic活动统计结果缓存
+
+[key] SIGNIN_APP:Act_Statistic:{ACT_ID}
+
+[val] resUserActStatistic{}
+
+[exp] 10 s
+
+**回源，用于读取活动的基本信息，管理员更新是手动刷新缓存**
+
 ## 6. 自定义数据结构
 
 ### 6.1 actStatisticUser
 
-用于 #2.3`/user/act/statistic `列举用户列表
+用于 #2.4`/user/act/statistic `列举用户列表
 
 * id
   * 顺序id
 * name
-* avatar
-  * 头像
 
 ### 6.2 resActLogItem
 
@@ -502,8 +536,33 @@ type WxPusherCallback struct {
   * 直接采用redis的值
   * []int
 * careful
-  * 还需要查询一下mysql
+  * get时还需要查询一下mysql
   * []int
+
+### 6.12 adminActListItem管理员获取活动列表
+
+* id
+  * 顺序id
+* act_id
+* name
+* begin_time
+  * string
+  * 后端作格式化
+* end_time
+  * string
+  * 后端作格式化
+* create_by
+  * string
+  * 姓名
+
+### 6.13 AdminActStatisticItem 管理员-活动数据
+
+* id
+  * 顺序id(按照完成时间先后排列)
+* user_id
+* user_name
+* datetime
+  * 完成时间
 
 ## 7. 用户群组ID
 
