@@ -527,6 +527,10 @@ type WxPusherCallback struct {
 *  status
    * int
    * 我的参与情况，0为“未参与”，1为“已参与”
+*  statistic
+   * done
+   * total
+   * info
 
 ### 6.11 CacheIDS 缓存活动信息
 
