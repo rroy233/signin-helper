@@ -86,7 +86,6 @@ func initHandler(c *gin.Context) {
 		tmpAct, err := dbretAct.LastInsertId()
 		actId := int(tmpAct)
 
-
 		//更新缓存
 		_, err = cacheClass(classId)
 		if err != nil {
@@ -181,8 +180,7 @@ func UserActInfoHandler(c *gin.Context) {
 		return
 	}
 
-
-	actList,err := getActIDs(auth.ClassId)
+	actList, err := getActIDs(auth.ClassId)
 	if err != nil {
 		Logger.Error.Println("[个人信息查询]获取班级活动列表失败:", err)
 		returnErrorJson(c, "系统异常")
@@ -190,14 +188,14 @@ func UserActInfoHandler(c *gin.Context) {
 	}
 
 	res := new(ResUserActInfo)
-	if len(actList) == 0{
+	if len(actList) == 0 {
 		res.Msg = "当前无生效中的活动"
-		c.JSON(200,res)
+		c.JSON(200, res)
 		return
 	}
-	res.Data.List = make([]*userActInfo,0)
+	res.Data.List = make([]*userActInfo, 0)
 
-	for i := range actList{
+	for i := range actList {
 		actItem := new(userActInfo)
 		act, err := getAct(actList[i])
 		if err != nil {
@@ -206,7 +204,7 @@ func UserActInfoHandler(c *gin.Context) {
 			return
 		}
 		//获取统计数据
-		sts,err := getActStatistics(actList[i])
+		sts, err := getActStatistics(actList[i])
 		if err != nil {
 			returnErrorJson(c, "查询统计数据失败")
 			return
@@ -215,27 +213,27 @@ func UserActInfoHandler(c *gin.Context) {
 		actItem.Statistic.Total = sts.Total
 		//完成情况概述
 		stsInfo := ""
-		if sts.Done == sts.Total{
+		if sts.Done == sts.Total {
 			stsInfo = "🎉所有同学都完成啦🎉"
-		}else{
+		} else {
 			stsInfo = "还有"
-			for j:=0;j<3&&j<len(sts.UnfinishedList);j++{
-				if j!=0{
+			for j := 0; j < 3 && j < len(sts.UnfinishedList); j++ {
+				if j != 0 {
 					stsInfo += "、"
 				}
 				stsInfo += sts.UnfinishedList[j].Name
 			}
-			if sts.Total-sts.Done>3{
-				stsInfo += "等"+strconv.FormatInt(int64(sts.Total-sts.Done),10)+"名同学未完成👀"
-			}else{
-				stsInfo += "这"+strconv.FormatInt(int64(sts.Total-sts.Done),10)+"名同学未完成👀"
+			if sts.Total-sts.Done > 3 {
+				stsInfo += "等" + strconv.FormatInt(int64(sts.Total-sts.Done), 10) + "名同学未完成👀"
+			} else {
+				stsInfo += "这" + strconv.FormatInt(int64(sts.Total-sts.Done), 10) + "名同学未完成👀"
 			}
 		}
 		actItem.Statistic.Info = stsInfo
 
 		//存储actToken
-		actToken := MD5_short(strconv.FormatInt(time.Now().UnixNano(),10)+auth.UserIdString())
-		rdb.Set(ctx,"SIGNIN_APP:actToken:"+actToken,strconv.FormatInt(int64(act.ActID),10),10*time.Minute)
+		actToken := MD5_short(strconv.FormatInt(time.Now().UnixNano(), 10) + auth.UserIdString())
+		rdb.Set(ctx, "SIGNIN_APP:actToken:"+actToken, strconv.FormatInt(int64(act.ActID), 10), 10*time.Minute)
 
 		actItem.ActToken = actToken
 		actItem.ActName = act.Name
@@ -259,7 +257,7 @@ func UserActInfoHandler(c *gin.Context) {
 		} else {
 			actItem.Status = 1 //已参与
 		}
-		res.Data.List = append(res.Data.List,actItem)
+		res.Data.List = append(res.Data.List, actItem)
 		res.Data.Total++
 	}
 
@@ -276,12 +274,12 @@ func UserActStatisticHandler(c *gin.Context) {
 	}
 
 	actToken := c.Query("act_token")
-	if actToken==""{
+	if actToken == "" {
 		returnErrorJson(c, "参数无效")
 		return
 	}
 
-	actID,err := queryActIdByActToken(actToken)
+	actID, err := queryActIdByActToken(actToken)
 	if err != nil {
 		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")
@@ -297,18 +295,18 @@ func UserActStatisticHandler(c *gin.Context) {
 	res.Status = 0
 	res.Data.Done = sts.Done
 	res.Data.Total = sts.Total
-	res.Data.FinishedList = make([]actStatisticUser,0)
-	res.Data.UnfinishedList = make([]actStatisticUser,0)
+	res.Data.FinishedList = make([]actStatisticUser, 0)
+	res.Data.UnfinishedList = make([]actStatisticUser, 0)
 
-	for i:=range sts.FinishedList{
-		res.Data.FinishedList = append(res.Data.FinishedList,actStatisticUser{
-			Id: sts.FinishedList[i].Id,
+	for i := range sts.FinishedList {
+		res.Data.FinishedList = append(res.Data.FinishedList, actStatisticUser{
+			Id:   sts.FinishedList[i].Id,
 			Name: sts.FinishedList[i].Name,
 		})
 	}
-	for i:=range sts.UnfinishedList{
-		res.Data.UnfinishedList = append(res.Data.UnfinishedList,actStatisticUser{
-			Id: sts.UnfinishedList[i].Id,
+	for i := range sts.UnfinishedList {
+		res.Data.UnfinishedList = append(res.Data.UnfinishedList, actStatisticUser{
+			Id:   sts.UnfinishedList[i].Id,
 			Name: sts.UnfinishedList[i].Name,
 		})
 	}
@@ -332,7 +330,7 @@ func UserActSigninHandler(c *gin.Context) {
 	}
 
 	//查询正在生效的活动id
-	ActiveActIDs,err := getActIDs(auth.ClassId)
+	ActiveActIDs, err := getActIDs(auth.ClassId)
 	if err != nil {
 		Logger.Error.Println("[签到]活动id查找失败", err, auth)
 		returnErrorJson(c, "系统异常(-1)")
@@ -340,7 +338,7 @@ func UserActSigninHandler(c *gin.Context) {
 	}
 
 	//从redis查找活动id
-	actID,err := queryActIdByActToken(form.ActToken)
+	actID, err := queryActIdByActToken(form.ActToken)
 	if err != nil {
 		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")
@@ -348,7 +346,7 @@ func UserActSigninHandler(c *gin.Context) {
 	}
 
 	//判断是否正在生效
-	if existIn(ActiveActIDs,actID)==false{
+	if existIn(ActiveActIDs, actID) == false {
 		Logger.Info.Println("[签到]从redis查找活动，活动已失效", auth)
 		returnErrorJson(c, "当前活动已过期")
 		return
@@ -366,9 +364,9 @@ func UserActSigninHandler(c *gin.Context) {
 	}
 
 	//活动活动信息
-	act,err := getAct(actID)
+	act, err := getAct(actID)
 	if err != nil {
-		Logger.Info.Println("[签到]获取活动信息失败",err, auth)
+		Logger.Info.Println("[签到]获取活动信息失败", err, auth)
 		returnErrorJson(c, "系统异常(-2)")
 		return
 	}
@@ -414,7 +412,7 @@ func UserNotiGetHandler(c *gin.Context) {
 		res.Data.NotiType = "none"
 	} else if notiType == NOTIFICATION_TYPE_EMAIL {
 		res.Data.NotiType = "email"
-	}else if notiType == NOTIFICATION_TYPE_WECHAT {
+	} else if notiType == NOTIFICATION_TYPE_WECHAT {
 		res.Data.NotiType = "wechat"
 	}
 
@@ -443,21 +441,21 @@ func UserNotiEditHandler(c *gin.Context) {
 		notiType = 1
 	} else if form.NotiType == "wechat" {
 		notiType = 2
-	} else{
+	} else {
 		returnErrorJson(c, "参数无效(-2)")
 		return
 	}
 
 	//检查是否绑定微信
-	wxID:=""
-	err = db.Get(&wxID,"select `wx_pusher_uid` from `user` where `user_id`=?",auth.UserID)
+	wxID := ""
+	err = db.Get(&wxID, "select `wx_pusher_uid` from `user` where `user_id`=?", auth.UserID)
 	if err != nil {
-		Logger.Error.Println("[更改通知方式]查询mysql异常",err)
+		Logger.Error.Println("[更改通知方式]查询mysql异常", err)
 		returnErrorJson(c, "系统异常")
 		return
 	}
 
-	if notiType == 2 && wxID == ""{
+	if notiType == 2 && wxID == "" {
 		returnErrorJson(c, "您还未绑定微信")
 		return
 	}
@@ -508,14 +506,17 @@ func UserActLogHandler(c *gin.Context) {
 			Logger.Info.Println("[用户查询参与记录]查询活动信息失败", logs[i], err)
 			res.Data.List = append(res.Data.List, resActLogItem{
 				Id:       id,
-				ActId:    0,
+				ActToken: "",
 				ActName:  "(活动不存在)",
 				DateTime: "null",
 			})
 		} else {
+			//存储actToken
+			actToken := MD5_short(strconv.FormatInt(time.Now().UnixNano(), 10) + auth.UserIdString())
+			rdb.Set(ctx, "SIGNIN_APP:actToken:"+actToken, strconv.FormatInt(int64(logs[i].ActID), 10), 10*time.Minute)
 			res.Data.List = append(res.Data.List, resActLogItem{
 				Id:       id,
-				ActId:    act.ActID,
+				ActToken: actToken,
 				ActName:  act.Name,
 				DateTime: ts2DateString(logs[i].CreateTime),
 			})
@@ -534,12 +535,12 @@ func UserActQueryHandler(c *gin.Context) {
 	}
 
 	actToken := c.Query("act_token")
-	if actToken == ""{
+	if actToken == "" {
 		returnErrorJson(c, "参数无效(-1)")
 		return
 	}
 
-	actID,err := queryActIdByActToken(actToken)
+	actID, err := queryActIdByActToken(actToken)
 	if err != nil {
 		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")

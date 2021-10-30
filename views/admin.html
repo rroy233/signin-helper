@@ -25,7 +25,6 @@
       
       <v-container>
         <!--  -->
-
         <v-alert
         class="ma-2"
         text
@@ -44,8 +43,6 @@
         <div class="v-text-body-1">
             您当前所管理的班级名称为<code>{{class_info.class_name}}</code>,一共有<code>{{class_info.total}}</code>名同学已加入班级。
             新同学可以使用班级代码<code>{{class_info.class_code}}</code>加入。
-            <br>
-            当前正在进行的活动为<code>{{class_info.act_name}}(#{{class_info.act_id}})</code>
         </div>
         </v-alert>
 
@@ -60,31 +57,14 @@
                 <v-list-item-content>
                   <v-list-item-title>修改班级信息</v-list-item-title>
                 </v-list-item-content>
-              </v-list-item>
-            <v-list-item @click="edit_act" link>
-              <v-list-item-icon>
-                <v-icon>mdi-calendar-edit</v-icon>
-              </v-list-item-icon>
-              <v-list-item-content>
-                <v-list-item-title>修改活动信息</v-list-item-title>
-              </v-list-item-content>
             </v-list-item>
 
-            <v-list-item @click="new_act" link>
+              <v-list-item @click="show_act_list" link>
                 <v-list-item-icon>
-                  <v-icon>mdi-calendar-plus</v-icon>
+                  <v-icon>mdi-format-list-bulleted</v-icon>
                 </v-list-item-icon>
                 <v-list-item-content>
-                  <v-list-item-title>新建活动</v-list-item-title>
-                </v-list-item-content>
-              </v-list-item>
-
-              <v-list-item @click="success('后续版本将支持')" link>
-                <v-list-item-icon>
-                  <v-icon>mdi-google-spreadsheet</v-icon>
-                </v-list-item-icon>
-                <v-list-item-content>
-                  <v-list-item-title>活动参与历史记录</v-list-item-title>
+                  <v-list-item-title>活动管理</v-list-item-title>
                 </v-list-item-content>
               </v-list-item>
 
@@ -121,35 +101,158 @@
       </v-dialog>
 
       <!-- 编辑班级信息 -->
-    <v-dialog v-model="editClassDialog" max-width="500px">
-        <v-card>
-          <v-card-title>编辑班级信息</v-card-title>
-          <v-card-text>
-            <v-text-field
-                label="班级信息"
-                v-model="class_edit.class_name"
-                outlined
-            ></v-text-field>
-            <v-text-field
-                label="班级代码"
-                v-model="class_edit.class_code"
-                outlined
-            ></v-text-field>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn color="blue darken-1" text @click="editClassDialog=!editClassDialog">取消</v-btn>
-            <v-btn color="blue darken-1" text @click="save_class">保存</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+        <v-dialog v-model="editClassDialog" max-width="500px">
+            <v-card>
+            <v-card-title>编辑班级信息</v-card-title>
+            <v-card-text>
+                <v-text-field
+                    label="班级名称"
+                    v-model="class_edit.class_name"
+                    outlined
+                ></v-text-field>
+                <v-text-field
+                    label="班级代码"
+                    v-model="class_edit.class_code"
+                    outlined
+                ></v-text-field>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn color="blue darken-1" text @click="editClassDialog=!editClassDialog">取消</v-btn>
+                <v-btn color="blue darken-1" text @click="save_class">保存</v-btn>
+            </v-card-actions>
+            </v-card>
+        </v-dialog>
 
-      <!-- 编辑活动信息 -->
+        <!-- 加载框 -->
       <v-dialog
-        v-model="act_dialog"
-        fullscreen
+        v-model="loading_dialog"
         hide-overlay
-        transition="dialog-bottom-transition"
+        persistent
+        width="300"
+        >
+        <v-card
+            color="white"
+            dark
+        >
+            <v-card-text class="mt-1 primary--text">
+            加载中
+            <v-progress-linear
+                indeterminate
+                color="primary"
+                class="mb-0"
+            ></v-progress-linear>
+            </v-card-text>
+        </v-card>
+        </v-dialog>
+
+
+        <!-- 活动列表 -->
+        <v-dialog v-model="act_list_dialog" fullscreen hide-overlay transition="dialog-bottom-transition">
+            <v-card>
+                <v-toolbar
+                  color="cyan"
+                  dark
+                  flat
+                >
+                <v-btn icon dark @click="act_list_dialog = false">
+                    <v-icon>mdi-close</v-icon>
+                </v-btn>
+                  <v-toolbar-title>活动管理</v-toolbar-title>
+                  <v-spacer></v-spacer>
+                  <v-btn depressed color="cyan darken-2" @click="new_act">
+                    新建活动
+                  </v-btn>
+                  <template v-slot:extension>
+                    <v-tabs v-model="act_list_tab" align-with-title>
+                      <v-tabs-slider color="yellow"></v-tabs-slider>
+                      <v-tab>
+                        <v-badge color="pink" dot v-if="act_list.active_num!=0">
+                            当前活动
+                        </v-badge>
+                        {{act_list.active_num==0?'当前活动':''}}
+                      </v-tab>
+                      <v-tab>
+                        历史活动
+                      </v-tab>
+                      <v-tab-item>
+                        <v-card>
+                        <v-container>
+                            <!-- 当前活动 -->
+                            <v-list three-line>
+                                <template v-for="(item, index) in act_list.active_list">
+                                  <v-list-item :key="index">
+                                    <v-list-item-avatar>
+                                      <v-icon>mdi-calendar-cursor</v-icon>
+                                    </v-list-item-avatar>
+                                    <v-list-item-content>
+                                      <v-list-item-title v-html="item.name"></v-list-item-title>
+                                      <v-list-item-subtitle >创建时间{{item.begin_time}}</v-list-item-subtitle>
+                                      <v-list-item-subtitle >截止时间{{item.end_time}}</v-list-item-subtitle>
+                                    </v-list-item-content>
+                                    <v-list-item-action>
+                                      <v-btn depressed @click="edit_act(item)">
+                                        编辑
+                                      </v-btn>
+                                    </v-list-item-action>
+                                    <v-list-item-action>
+                                        <v-btn depressed @click="get_sts(item)">
+                                          数据
+                                        </v-btn>
+                                        <v-list-item-action-text class="text-center">创建人:{{item.create_by}}</v-list-item-action-text>
+                                      </v-list-item-action>
+                                  </v-list-item>
+                                </template>
+                            </v-list>
+                            <!-- 当前活动 -->
+                        </v-container>
+                        </v-card>
+                      </v-tab-item>
+                      <v-tab-item>
+                        <v-card>
+                            <!-- 历史活动 -->
+                            <v-list three-line>
+                                <template v-for="(item, index) in act_list.history_list">
+                                  <v-list-item :key="index">
+                                    <v-list-item-avatar>
+                                      <v-icon>mdi-calendar-lock</v-icon>
+                                    </v-list-item-avatar>
+                                    <v-list-item-content>
+                                      <v-list-item-title v-html="item.name"></v-list-item-title>
+                                      <v-list-item-subtitle >创建时间{{item.begin_time}}</v-list-item-subtitle>
+                                      <v-list-item-subtitle >截止时间{{item.end_time}}</v-list-item-subtitle>
+                                    </v-list-item-content>
+                                    <v-list-item-action>
+                                      <v-btn depressed @click="edit_act(item)">
+                                        编辑
+                                      </v-btn>
+                                    </v-list-item-action>
+                                    <v-list-item-action>
+                                        <v-btn depressed @click="get_sts(item)">
+                                          数据
+                                        </v-btn>
+                                        <v-list-item-action-text class="text-center">创建人:{{item.create_by}}</v-list-item-action-text>
+                                      </v-list-item-action>
+                                  </v-list-item>
+                                  </v-list-item>
+                                </template>
+                            </v-list>
+                            <!-- 历史活动 -->
+                        </v-card>
+                      </v-tab-item>
+                    </v-tabs>
+                  </template>
+                </v-toolbar>
+            </v-card>
+        </v-dialog>
+
+
+        <!-- 编辑活动信息 -->
+        <v-dialog
+            v-model="act_dialog"
+            fullscreen
+            hide-overlay
+            transition="dialog-bottom-transition"
         >
         <v-card>
             <v-toolbar
@@ -180,26 +283,45 @@
             <!-- 编辑区开始 -->
             <v-container>
                 <v-alert
+                    dense
+                    type="info"
+                    icon="mdi-folder-plus-outline"
+                    v-if="act_edit_mode=='new'"
+                    class="mt-2 mb-4"
+                >
+                请正确填写结束日期，活动状态会在到期后自动变更。
+                <br>
+                建议管理员为每一个活动都选择不同的配图，便于区分。
+                <br>
+                保存之后，活动即开始，系统将向班级内每一位同学发送通知。
+                </v-alert>
+                <v-alert
                 dense
-                type="info"
-                v-if="act_edit_mode=='new'"
+                color="#2A3B4D"
+                dark
+                icon="mdi-calendar-edit"
+                v-if="act_edit_mode=='edit'"
                 class="mt-2 mb-4"
                 >
-                新建活动之后将无法切换回旧的活动，请确保班级人员充分参与后再新建活动。活动名称建议不要与过去的重复。
-                <br>
-                请正确填写开始日期和结束日期，通知发送仅在此时间段内有效。
-                <br>
-                保存之后，系统将向班级内每一位同学发送通知邮件。
+                若您提前关闭此活动，我们将自动为您设置结束时间。
                 </v-alert>
 
                 <v-text-field
                     label="活动名称"
                     v-model="act_info.name"
                     :rules="name_rule"
+                    hint="建议不要与过去的重复，可以是:第x周xxxx"
                     outlined
                 ></v-text-field>
-                
 
+                <v-switch
+                v-model="act_info.active"
+                v-if="act_edit_mode=='edit'"
+                inset
+                label="是否启用活动"
+                class="my-0"
+                ></v-switch>
+                
                 <v-textarea
                     label="活动公告"
                     v-model="act_info.announcement"
@@ -263,80 +385,6 @@
                     </v-card>
                 </v-container>
                 <!-- 预览结束 -->
-
-
-                <!-- 开始时间选择 -->
-                <v-menu
-                        ref="begin_date_menu"
-                        v-model="date_time_menu.begin_date_menu"
-                        :close-on-content-click="false"
-                        :return-value.sync="act_info.begin_time.d"
-                        transition="scale-transition"
-                        offset-y
-                        min-width="auto"
-                >
-                    <template v-slot:activator="{ on, attrs }">
-                        <v-text-field
-                                v-model="act_info.begin_time.d"
-                                label="选择活动开始日期"
-                                prepend-icon="mdi-calendar"
-                                readonly
-                                v-bind="attrs"
-                                v-on="on"
-                        ></v-text-field>
-                    </template>
-                    <v-date-picker
-                            v-model="act_info.begin_time.d"
-                            no-title
-                            scrollable
-                    >
-                        <v-spacer></v-spacer>
-                        <v-btn
-                                text
-                                color="primary"
-                                @click="date_time_menu.begin_date_menu = false"
-                        >
-                            Cancel
-                        </v-btn>
-                        <v-btn
-                                text
-                                color="primary"
-                                @click="$refs.begin_date_menu.save(act_info.begin_time.d)"
-                        >
-                            OK
-                        </v-btn>
-                    </v-date-picker>
-                </v-menu>
-                <v-menu
-                        ref="begin_time_menu"
-                        v-model="date_time_menu.begin_time_menu"
-                        :close-on-content-click="false"
-                        :nudge-right="40"
-                        :return-value.sync="act_info.begin_time.t"
-                        transition="scale-transition"
-                        offset-y
-                        max-width="290px"
-                        min-width="290px"
-                >
-                    <template v-slot:activator="{ on, attrs }">
-                        <v-text-field
-                                v-model="act_info.begin_time.t"
-                                label="活动开始时间(24小时制)"
-                                prepend-icon="mdi-clock-time-four-outline"
-                                readonly
-                                v-bind="attrs"
-                                v-on="on"
-                        ></v-text-field>
-                    </template>
-                    <v-time-picker
-                            v-if="date_time_menu.begin_time_menu"
-                            v-model="act_info.begin_time.t"
-                            format="24hr"
-                            full-width
-                            @click:minute="$refs.begin_time_menu.save(act_info.begin_time.t)"
-                    ></v-time-picker>
-                </v-menu>
-            <!-- 开始时间选择 -->
 
                 <!-- 结束时间选择 -->
                 <v-menu
@@ -419,6 +467,77 @@
 
         </v-card>
         </v-dialog>
+        
+        <!-- 活动统计数据 -->
+        <v-dialog
+            v-model="sts_dialog"
+            fullscreen
+            hide-overlay
+            transition="dialog-bottom-transition"
+        >
+        <v-card>
+            <v-toolbar
+            dark
+            color="info"
+            >
+                <v-btn
+                icon
+                dark
+                @click="sts_dialog = false"
+                >
+                <v-icon>mdi-close</v-icon>
+                </v-btn>
+                <v-toolbar-title>活动统计数据</v-toolbar-title>
+                <v-spacer></v-spacer>
+            </v-toolbar>
+            <div class="pa-4">
+            <div class="text-caption">
+                数据统计刷新存在0~10s延迟。
+            </div>
+            </div>
+            <v-card class="ma-2">
+            <v-list dense class="pa-2">
+                <v-subheader>未完成</v-subheader>
+                <v-list-item-group
+                    color="primary"
+                >
+                    <v-list-item
+                    v-for="(item,i) in sts.unfinished_list"
+                    :key="i"
+                    >
+                    <v-list-item-icon>
+                        <v-icon v-text="item.id"></v-icon>
+                    </v-list-item-icon>
+                    <v-list-item-content>
+                        <v-list-item-title>{{item.user_name}} (UID:{{item.user_id}})</v-list-item-title>
+                    </v-list-item-content>
+                    </v-list-item>
+                </v-list-item-group>
+
+                <v-divider></v-divider>
+
+                <v-subheader>已完成</v-subheader>
+                <v-list-item-group
+                    color="primary"
+                >
+                    <v-list-item
+                    v-for="(item,i) in sts.finished_list"
+                    :key="i"
+                    >
+                    <v-list-item-icon>
+                        <v-icon v-text="item.id"></v-icon>
+                    </v-list-item-icon>
+                    <v-list-item-content>
+                        <v-list-item-title>{{item.user_name}} (UID:{{item.user_id}})</v-list-item-title>
+                        <v-list-item-subtitle>完成时间:{{item.date_time}}</v-list-item-subtitle>
+                    </v-list-item-content>
+                    </v-list-item>
+                </v-list-item-group>
+            </v-list>
+            </v-card>
+            
+        </v-card>
+        </v-dialog>
 
     </v-main>
 
@@ -443,6 +562,11 @@
           title:'',
           text:''
       },
+      act_list:{
+        active_num:0,
+        active_list:[],
+        history_list:[],
+      },
       class_info:{
           class_name:"",
           class_code:"",
@@ -456,19 +580,26 @@
       },
       act_dialog:false,
       editClassDialog:false,
+      act_list_dialog:false,
+      loading_dialog:false,
+      sts_dialog:false,
+      act_list_tab:0,
       act_info:{
           name:"",
+          active:false,
           pic:"",
           announcement:"",
           cheer_text:"",
-          begin_time:{
-            d:"",
-            t:"",
-          },
           end_time:{
               d:"",
               t:"",
           }
+      },
+      sts:{
+        done:0,
+        total:0,
+        unfinished_list:[],
+        finished_list:[],
       },
       act_edit_mode:"edit",
       date_time_menu:{
@@ -481,30 +612,8 @@
     mounted:function(){
         //获取班级信息
         this.initClass()
-        
-        //获取活动信息
-        this.initAct()
     },
     methods:{
-        initAct:function(){
-            let _this = this
-            axios({
-                method: 'get',
-                url: backEndUrl+"/api/admin/act/info",
-            }).then(function (res) {
-                if (res.data.status == 0){
-                    _this.act_info = res.data.data
-                    if (_this.act_info.pic == "/static/image/default.jpg"){
-                        _this.act_info.pic = ""
-                    }
-                }else{
-                    _this.error(res.data.msg)
-                }
-            })
-            .catch(function (error) {
-                _this.error(error)
-            })
-        },
         initClass:function(){
             let _this = this
             axios({
@@ -521,11 +630,37 @@
                 _this.error(error)
             })
         },
-        edit_act:function(){
-            this.act_dialog = true
-            this.act_edit_mode = "edit"
+        edit_act:function(act_item){
+            //获取要编辑的活动信息
+            let _this = this
+            axios({
+                method: 'get',
+                url: backEndUrl+"/api/admin/act/info",
+                params:{
+                    act_id:act_item.act_id,
+                }
+            }).then(function (res) {
+                if (res.data.status == 0){
+                    _this.act_info = res.data.data
+                    _this.act_dialog = true
+                    _this.act_edit_mode = "edit"
+                }else{
+                    _this.error(res.data.msg)
+                }
+            })
+            .catch(function (error) {
+                _this.error(error)
+            })
         },
         new_act:function(){
+            this.act_info.name = ""
+            this.act_info.active = true
+            this.act_info.announcement = ""
+            this.act_info.pic = ""
+            this.act_info.cheer_text = "恭喜完成"
+            this.act_info.end_time.d = ""
+            this.act_info.end_time.t = ""
+
             this.act_dialog = true
             this.act_edit_mode = "new"
         },
@@ -533,6 +668,24 @@
             this.editClassDialog = true
             this.class_edit.class_name = this.class_info.class_name
             this.class_edit.class_code = this.class_info.class_code
+        },
+        show_act_list:function(){
+            let _this = this
+            this.loading_dialog = true
+            axios({
+                method: 'get',
+                url: backEndUrl+"/api/admin/act/list",
+            }).then(function (res) {
+                if (res.data.status == 0){
+                    _this.act_list = res.data.data
+                    _this.act_list_dialog = true
+                    _this.loading_dialog = false
+                }else{
+                    _this.error(res.data.msg)
+                }
+            }).catch(function (error) {
+                _this.error(error)
+            })
         },
         save_class:function(){
             let _this = this
@@ -570,7 +723,7 @@
                 if (res.data.status == 0){
                     _this.success("保存成功")
                     _this.act_dialog = false
-                    _this.initAct()
+                    _this.show_act_list()
                 }else{
                     _this.error(res.data.msg)
                 }
@@ -580,6 +733,32 @@
                 _this.error(error)
             })
 
+        },
+        get_sts:function(info_item){
+            let _this = this
+            //获取统计数据
+            axios({
+                method: 'get',
+                url: backEndUrl+'/api/admin/act/statistic',
+                params:{
+                    act_id:info_item.act_id
+                }
+            }).then(function (res) {
+                // 处理成功情况
+                if (res.data.status == 0){
+                    _this.sts.done = res.data.data.done
+                    _this.sts.total = res.data.data.total
+                    _this.sts.unfinished_list = res.data.data.unfinished_list
+                    _this.sts.finished_list = res.data.data.finished_list
+                    _this.sts_dialog = true
+                }else{
+                    _this.error(res.data.msg)
+                }
+            })
+            .catch(function (error) {
+                // 处理错误情况
+                _this.error(error)
+            })
         },
         success:function(text){
             this.dialog.open = true

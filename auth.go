@@ -268,8 +268,8 @@ func wxpusherCallbackHandler(c *gin.Context) {
 
 	extra := callBackData.Data.Extra
 	wxUserid := callBackData.Data.UID
-	if wxUserid == ""{
-		Logger.Info.Println("[微信扫码回调]wxUserid为空:",c)
+	if wxUserid == "" {
+		Logger.Info.Println("[微信扫码回调]wxUserid为空:", c)
 		c.Status(400)
 		return
 	}
@@ -277,28 +277,28 @@ func wxpusherCallbackHandler(c *gin.Context) {
 	userID, err := rdb.Get(ctx, "SIGNIN_APP:Wechat_Bind:"+extra).Result()
 	token, err := rdb.Get(ctx, " SIGNIN_APP:Wechat_Bind:"+userID).Result()
 	if err != nil {
-		Logger.Info.Println("[微信扫码回调]参数无效:",err)
+		Logger.Info.Println("[微信扫码回调]参数无效:", err)
 		c.Status(400)
 		return
 	}
-	if userID == "" && token == ""{
+	if userID == "" && token == "" {
 		c.Status(400)
 		return
 	}
 
 	//存储
-	_,err = db.Exec("update `user` set `wx_pusher_uid`=? where `user_id`=?",wxUserid,userID)
+	_, err = db.Exec("update `user` set `wx_pusher_uid`=? where `user_id`=?", wxUserid, userID)
 	if err != nil {
-		Logger.Error.Println("[微信扫码回调]存储mysql失败:",err)
+		Logger.Error.Println("[微信扫码回调]存储mysql失败:", err)
 		c.Status(400)
 		return
 	}
 
 	//设置redis
 	err = rdb.Set(ctx, "SIGNIN_APP:Wechat_Bind:"+extra, "DONE", redis.KeepTTL).Err()
-	err = rdb.Set(ctx, " SIGNIN_APP:Wechat_Bind:"+userID, "DONE",redis.KeepTTL).Err()
+	err = rdb.Set(ctx, " SIGNIN_APP:Wechat_Bind:"+userID, "DONE", redis.KeepTTL).Err()
 	if err != nil {
-		Logger.Error.Println("[微信扫码回调]存储redis失败:",err)
+		Logger.Error.Println("[微信扫码回调]存储redis失败:", err)
 		c.Status(400)
 		return
 	}

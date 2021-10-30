@@ -9,8 +9,8 @@ import (
 )
 
 type CacheIDS struct {
-	Total int `json:"total"`
-	Easy []int `json:"easy"`
+	Total   int   `json:"total"`
+	Easy    []int `json:"easy"`
 	Careful []int `json:"careful"`
 }
 
@@ -47,47 +47,47 @@ func cacheAct(ActID int) (Act *dbAct, err error) {
 }
 
 //部分缓存机制
-func cacheIDs(classID int) (ids *CacheIDS,err error) {
+func cacheIDs(classID int) (ids *CacheIDS, err error) {
 	ids = new(CacheIDS)
-	ids.Easy = make([]int,0)
-	ids.Careful = make([]int,0)
+	ids.Easy = make([]int, 0)
+	ids.Careful = make([]int, 0)
 
-	acts := make([]dbAct,0)
-	err = db.Select(&acts,"select * from `activity` where `class_id`=? and `active`=?",classID,1)
+	acts := make([]dbAct, 0)
+	err = db.Select(&acts, "select * from `activity` where `class_id`=? and `active`=?", classID, 1)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	if len(acts)==0{
-		return ids,nil
+	if len(acts) == 0 {
+		return ids, nil
 	}
 
-	for i:= range acts{
+	for i := range acts {
 		var et int64
-		et,err = strconv.ParseInt(acts[i].EndTime,10,64)
+		et, err = strconv.ParseInt(acts[i].EndTime, 10, 64)
 		if err != nil {
 			Logger.Error.Println("[cache][cacheIDs]解析时间失败:", err)
 			return
 		}
 
 		//判断是否过期
-		if time.Now().Unix()>et {
+		if time.Now().Unix() > et {
 			//更新active
-			_,err = db.Exec("update `activity` set `active` = ? where `act_id`=?",0,acts[i].ActID)
+			_, err = db.Exec("update `activity` set `active` = ? where `act_id`=?", 0, acts[i].ActID)
 			if err != nil {
 				Logger.Error.Println("[cache][cacheIDs]更新active失败:", err)
 				return
 			}
-			Logger.Info.Println("[cache][cacheIDs]",acts[i].Name,"活动过期已处理。")
+			Logger.Info.Println("[cache][cacheIDs]", acts[i].Name, "活动过期已处理。")
 			continue
 		}
-		if et - time.Now().Unix() > 1*60{//<1h >5min
-			ids.Easy = append(ids.Easy,acts[i].ActID)
-		}else if et - time.Now().Unix() < 1*60{
-			ids.Careful = append(ids.Careful,acts[i].ActID)
+		if et-time.Now().Unix() > 1*60 { //<1h >5min
+			ids.Easy = append(ids.Easy, acts[i].ActID)
+		} else if et-time.Now().Unix() < 1*60 {
+			ids.Careful = append(ids.Careful, acts[i].ActID)
 		}
 	}
 
-	ids.Total = len(ids.Easy)+len(ids.Careful)
+	ids.Total = len(ids.Easy) + len(ids.Careful)
 
 	data, err := json.Marshal(ids)
 	if err != nil {
@@ -99,9 +99,9 @@ func cacheIDs(classID int) (ids *CacheIDS,err error) {
 }
 
 func cacheActStatistics(actID int) (res *ActStatistic, err error) {
-	act,err := getAct(actID)
+	act, err := getAct(actID)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	users := make([]dbUser, 0)
@@ -130,7 +130,7 @@ func cacheActStatistics(actID int) (res *ActStatistic, err error) {
 
 	logMap := make(map[int]int, len(logs))
 	for i := range logs {
-		logMap[logs[i].UserID] = logs[i].LogID//不为0
+		logMap[logs[i].UserID] = logs[i].LogID //不为0
 	}
 
 	fC := 0
@@ -144,11 +144,11 @@ func cacheActStatistics(actID int) (res *ActStatistic, err error) {
 			//未完成的
 			ufC++
 			res.UnfinishedList = append(res.UnfinishedList, &ActStatisticItem{
-				Id:     ufC,
-				UserID: users[i].UserID,
-				ActID:  act.ActID,
-				LogID:  -1,
-				Name:   users[i].Name,
+				Id:       ufC,
+				UserID:   users[i].UserID,
+				ActID:    act.ActID,
+				LogID:    -1,
+				Name:     users[i].Name,
 				DateTime: "N/A",
 			})
 		}
@@ -157,11 +157,11 @@ func cacheActStatistics(actID int) (res *ActStatistic, err error) {
 	//对已完成的用户按照提交时间倒叙排列
 	for i := range logs {
 		res.FinishedList = append(res.FinishedList, &ActStatisticItem{
-			Id:     fC,
-			UserID: logs[i].UserID,
-			ActID:  act.ActID,
-			LogID:  logs[i].LogID,
-			Name:   usernameMap[logs[i].UserID],
+			Id:       fC,
+			UserID:   logs[i].UserID,
+			ActID:    act.ActID,
+			LogID:    logs[i].LogID,
+			Name:     usernameMap[logs[i].UserID],
 			DateTime: ts2DateString(logs[i].CreateTime),
 		})
 		fC--
@@ -177,11 +177,11 @@ func cacheActStatistics(actID int) (res *ActStatistic, err error) {
 	return
 }
 
-func queryActIdByActToken(actToken string) (id int,err error) {
-	r := rdb.Get(ctx,"SIGNIN_APP:actToken:"+actToken).Val()
-	if r == ""{
-		return 0,errors.New("actToken不存在")
+func queryActIdByActToken(actToken string) (id int, err error) {
+	r := rdb.Get(ctx, "SIGNIN_APP:actToken:"+actToken).Val()
+	if r == "" {
+		return 0, errors.New("actToken不存在")
 	}
-	id,err = strconv.Atoi(r)
+	id, err = strconv.Atoi(r)
 	return
 }

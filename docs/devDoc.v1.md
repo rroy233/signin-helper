@@ -34,7 +34,7 @@ v1.x版本
 - [x] 实现邮箱通知
 - [x] 实现wx通知
 - [x] 改用“骚话库”进行通知
-- [ ] v1.x 多任务
+- [x] v1.x 多任务
 - [ ] 细化通知机制
 
 
@@ -240,14 +240,13 @@ v1.x版本
 * params
   * act_id
 * resp -> resAdminActInfo
+  * act_id
   * name
   * active
+    * bool
   * announcement
   * pic
   * cheer_text
-  * begin_time
-    * d
-    * t
   * end_time
     * d
     * t
@@ -274,6 +273,7 @@ v1.x版本
 * data -> FormDataAdminActEdit json
   * name
   * active
+    * bool
   * announcement
   * pic
   * cheer_text

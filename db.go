@@ -34,7 +34,7 @@ type dbClass struct {
 type dbAct struct {
 	ActID        int    `db:"act_id" json:"act_id"`
 	ClassID      int    `db:"class_id" json:"class_id"`
-	Active int `json:"active" db:"active"`
+	Active       int    `json:"active" db:"active"`
 	Name         string `db:"name" json:"name"`
 	Announcement string `db:"announcement" json:"announcement"`
 	CheerText    string `db:"cheer_text" json:"cheer_text"`
@@ -193,11 +193,10 @@ func getAct(actID int) (act *dbAct, err error) {
 
 func getActIDs(classID int) (res []int, err error) {
 	ids := new(CacheIDS)
-	res = make([]int,0)
+	res = make([]int, 0)
 
 	idsCache := rdb.Get(ctx, "SIGNIN_APP:Class_Active_Act:"+strconv.FormatInt(int64(classID), 10)).Val()
 	if idsCache == "" {
-		Logger.Debug.Println("[DB][getActIDs]回源读取信息:", err)
 		//回源请求数据库，然后缓存
 		ids, err = cacheIDs(classID)
 		if err != nil {
@@ -213,27 +212,27 @@ func getActIDs(classID int) (res []int, err error) {
 	}
 
 	//将easy的全部送入res
-	for i:=range ids.Easy{
-		res = append(res,ids.Easy[i])
+	for i := range ids.Easy {
+		res = append(res, ids.Easy[i])
 	}
 
 	//careful的回源查询mysql
-	for i:=range ids.Careful{
+	for i := range ids.Careful {
 		act := new(dbAct)
-		err = db.Get(act,"select * from `activity` where `act_id`=?",ids.Careful[i])
+		err = db.Get(act, "select * from `activity` where `act_id`=?", ids.Careful[i])
 		if err != nil {
 			Logger.Error.Println("[DB][getActIDs]careful的回源查询mysql失败:", err)
 			return
 		}
 		var et int64
-		et,err = strconv.ParseInt(ts2DateString(act.EndTime),10,64)
+		et, err = strconv.ParseInt(ts2DateString(act.EndTime), 10, 64)
 		if err != nil {
 			Logger.Error.Println("[cache][cacheIDs]解析时间失败:", err)
 			return
 		}
-		if time.Now().Unix() <et{
+		if time.Now().Unix() < et {
 			//未过期
-			res = append(res,ids.Careful[i])
+			res = append(res, ids.Careful[i])
 		}
 	}
 
@@ -270,12 +269,12 @@ func queryUserName(userid int) string {
 	return name
 }
 
-func existIn(src []int,val int)bool{
-	if len(src)==0{
+func existIn(src []int, val int) bool {
+	if len(src) == 0 {
 		return false
 	}
-	for i:=range src{
-		if src[i]==val{
+	for i := range src {
+		if src[i] == val {
 			return true
 		}
 	}
