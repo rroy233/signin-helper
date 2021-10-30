@@ -205,6 +205,33 @@ func UserActInfoHandler(c *gin.Context) {
 			returnErrorJson(c, "查询失败(系统异常或是班级负责人配置错误)")
 			return
 		}
+		//获取统计数据
+		sts,err := getActStatistics(actList[i])
+		if err != nil {
+			returnErrorJson(c, "查询统计数据失败")
+			return
+		}
+		actItem.Statistic.Done = sts.Done
+		actItem.Statistic.Total = sts.Total
+		//完成情况概述
+		stsInfo := ""
+		if sts.Done == sts.Total{
+			stsInfo = "🎉所有同学都完成啦🎉"
+		}else{
+			stsInfo = "还有"
+			for j:=0;j<3&&j<len(sts.UnfinishedList);j++{
+				if j!=0{
+					stsInfo += "、"
+				}
+				stsInfo += sts.UnfinishedList[j].Name
+			}
+			if sts.Total-sts.Done>3{
+				stsInfo += "等"+strconv.FormatInt(int64(sts.Total-sts.Done),10)+"名同学未完成👀"
+			}else{
+				stsInfo += "这"+strconv.FormatInt(int64(sts.Total-sts.Done),10)+"名同学未完成👀"
+			}
+		}
+		actItem.Statistic.Info = stsInfo
 
 		//存储actToken
 		actToken := MD5_short(strconv.FormatInt(time.Now().UnixNano(),10)+auth.UserIdString())

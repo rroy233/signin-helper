@@ -50,7 +50,6 @@ func adminActInfoHandler(c *gin.Context) {
 		return
 	}
 
-
 	//获取活动
 	act, err := getAct(actID)
 	if err != nil {

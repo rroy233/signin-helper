@@ -182,6 +182,11 @@ type userActInfo struct {
 	BeginTime       string `json:"begin_time"`
 	EndTime         string `json:"end_time"`
 	Status          int    `json:"status"`
+	Statistic struct{
+		Done int `json:"done"`
+		Total int `json:"total"`
+		Info string `json:"info"`
+	} `json:"statistic"`
 }
 
 type adminActListItem struct {
