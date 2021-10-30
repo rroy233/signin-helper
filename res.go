@@ -61,6 +61,13 @@ type ResUserActStatistic struct {
 	} `json:"data"`
 }
 
+type ActStatistic struct {
+	Done           int                `json:"done"`
+	Total          int                 `json:"total"`
+	UnfinishedList []*ActStatisticItem `json:"unfinished_list"`
+	FinishedList   []*ActStatisticItem `json:"finished_list"`
+}
+
 type ResActLog struct {
 	Res
 	Data struct {
@@ -115,8 +122,6 @@ type ResAdminClassInfo struct {
 		ClassName string `json:"class_name"`
 		ClassCode string `json:"class_code"`
 		Total     int    `json:"total"`
-		ActId     int    `json:"act_id"`
-		ActName   string `json:"act_name"`
 	} `json:"data"`
 }
 
@@ -128,12 +133,38 @@ type ResUserWechatQrcode struct {
 	} `json:"data"`
 }
 
+type ResAdminActList struct {
+	Res
+	Data struct{
+		ActiveNum int `json:"active_num"`
+		ActiveList []*adminActListItem `json:"active_list"`
+		HistoryList []*adminActListItem `json:"history_list"`
+	}`json:"data"`
+}
+
+type ResAdminActStatistic struct {
+	Res
+	Data struct{
+		Done           int                `json:"done"`
+		Total          int                `json:"total"`
+		UnfinishedList []*AdminActStatisticItem `json:"unfinished_list"`
+		FinishedList   []*AdminActStatisticItem `json:"finished_list"`
+	}`json:"data"`
+}
+
 //自定义数据结构
 type actStatisticUser struct {
 	Id     int    `json:"id"`
-	UserID int    `json:"user_id"`
 	Name   string `json:"name"`
-	Avatar string `json:"avatar"`
+}
+
+type ActStatisticItem struct {
+	Id     int    `json:"id"`
+	UserID int    `json:"user_id"`
+	ActID int `json:"act_id"`
+	LogID int `json:"log_id"`
+	Name   string `json:"name"`
+	DateTime string `json:"date_time"`
 }
 
 type resActLogItem struct {
@@ -151,6 +182,22 @@ type userActInfo struct {
 	BeginTime       string `json:"begin_time"`
 	EndTime         string `json:"end_time"`
 	Status          int    `json:"status"`
+}
+
+type adminActListItem struct {
+	Id int `json:"id"`
+	ActID int `json:"act_id"`
+	Name string `json:"name"`
+	BeginTime string `json:"begin_time"`
+	EndTime string `json:"end_time"`
+	CreateBy string `json:"create_by"`
+}
+
+type AdminActStatisticItem struct {
+	ID int `json:"id"`
+	UserId	int `json:"user_id"`
+	UserName string `json:"user_name"`
+	DateTime string `json:"date_time"`
 }
 
 //函数

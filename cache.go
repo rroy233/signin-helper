@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"signin/Logger"
 	"strconv"
 	"time"
@@ -61,9 +62,8 @@ func cacheIDs(classID int) (ids *CacheIDS,err error) {
 	}
 
 	for i:= range acts{
-		//不判断begin_time了
 		var et int64
-		et,err = strconv.ParseInt(ts2DateString(acts[i].EndTime),10,64)
+		et,err = strconv.ParseInt(acts[i].EndTime,10,64)
 		if err != nil {
 			Logger.Error.Println("[cache][cacheIDs]解析时间失败:", err)
 			return
@@ -77,6 +77,7 @@ func cacheIDs(classID int) (ids *CacheIDS,err error) {
 				Logger.Error.Println("[cache][cacheIDs]更新active失败:", err)
 				return
 			}
+			Logger.Info.Println("[cache][cacheIDs]",acts[i].Name,"活动过期已处理。")
 			continue
 		}
 		if et - time.Now().Unix() > 1*60{//<1h >5min
@@ -97,73 +98,90 @@ func cacheIDs(classID int) (ids *CacheIDS,err error) {
 	return
 }
 
-func cacheClassStatistics(classID int) (res *ResUserActStatistic, err error) {
+func cacheActStatistics(actID int) (res *ActStatistic, err error) {
+	act,err := getAct(actID)
+	if err != nil {
+		return nil,err
+	}
+
 	users := make([]dbUser, 0)
-	err = db.Select(&users, "select * from `user` where `class`=?;", classID)
+	err = db.Select(&users, "select * from `user` where `class`=?;", act.ClassID)
 	if err != nil {
 		return nil, err
 	}
 
 	class := new(dbClass)
-	err = db.Get(class, "select * from `class` where `class_id`=?", classID)
+	err = db.Get(class, "select * from `class` where `class_id`=?", act.ClassID)
 	if err != nil {
 		return nil, err
 	}
 
-	logItem := make([]dbLog, 0)
-	err = db.Select(&logItem, "select * from `signin_log` where `act_id`=? order by `log_id` desc;", class.ActID)
+	logs := make([]dbLog, 0)
+	err = db.Select(&logs, "select * from `signin_log` where `act_id`=? order by `log_id` desc;", actID)
 	if err != nil {
 		return nil, err
 	}
 
-	res = new(ResUserActStatistic)
-	res.Status = 0
-	res.Msg = strconv.FormatInt(time.Now().Unix(), 10)
-	res.Data.Done = len(logItem)
-	res.Data.Total = len(users)
-	res.Data.UnfinishedList = make([]actStatisticUser, 0)
-	res.Data.FinishedList = make([]actStatisticUser, 0)
+	res = new(ActStatistic)
+	res.Done = len(logs)
+	res.Total = len(users)
+	res.UnfinishedList = make([]*ActStatisticItem, 0)
+	res.FinishedList = make([]*ActStatisticItem, 0)
 
-	logMap := make(map[int]int, len(logItem))
-	for i := range logItem {
-		logMap[logItem[i].UserID] = 1
+	logMap := make(map[int]int, len(logs))
+	for i := range logs {
+		logMap[logs[i].UserID] = logs[i].LogID//不为0
 	}
 
 	fC := 0
 	ufC := 0
-	usernameMap := make(map[int]string, len(logItem))
+	usernameMap := make(map[int]string, len(logs))
 	for i := range users {
-		if logMap[users[i].UserID] == 1 {
+		if logMap[users[i].UserID] != 0 {
 			fC++
 			usernameMap[users[i].UserID] = users[i].Name
 		} else {
+			//未完成的
 			ufC++
-			res.Data.UnfinishedList = append(res.Data.UnfinishedList, actStatisticUser{
+			res.UnfinishedList = append(res.UnfinishedList, &ActStatisticItem{
 				Id:     ufC,
 				UserID: users[i].UserID,
+				ActID:  act.ActID,
+				LogID:  -1,
 				Name:   users[i].Name,
-				Avatar: "null",
+				DateTime: "N/A",
 			})
 		}
 	}
 
 	//对已完成的用户按照提交时间倒叙排列
-	for i := range logItem {
-		res.Data.FinishedList = append(res.Data.FinishedList, actStatisticUser{
+	for i := range logs {
+		res.FinishedList = append(res.FinishedList, &ActStatisticItem{
 			Id:     fC,
-			UserID: 0,
-			Name:   usernameMap[logItem[i].UserID],
-			Avatar: "null",
+			UserID: logs[i].UserID,
+			ActID:  act.ActID,
+			LogID:  logs[i].LogID,
+			Name:   usernameMap[logs[i].UserID],
+			DateTime: ts2DateString(logs[i].CreateTime),
 		})
 		fC--
 	}
 
 	data, err := json.Marshal(res)
 	if err != nil {
-		Logger.Error.Println("[cache][ClassStatistics]json格式化失败:", err)
+		Logger.Error.Println("[cache][Act_Statistic]json格式化失败:", err)
 		return nil, err
 	}
-	rdb.Set(ctx, "SIGNIN_APP:Class_Statistics:"+strconv.FormatInt(int64(classID), 10), string(data), 10*time.Second)
+	rdb.Set(ctx, "SIGNIN_APP:Act_Statistic:"+strconv.FormatInt(int64(actID), 10), string(data), 10*time.Second)
 
+	return
+}
+
+func queryActIdByActToken(actToken string) (id int,err error) {
+	r := rdb.Get(ctx,"SIGNIN_APP:actToken:"+actToken).Val()
+	if r == ""{
+		return 0,errors.New("actToken不存在")
+	}
+	id,err = strconv.Atoi(r)
 	return
 }

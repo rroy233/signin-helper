@@ -9,15 +9,23 @@ import (
 	"time"
 )
 
-type FormDataAdminAct struct {
+type FormDataAdminActNew struct {
 	Name         string `json:"name"`
 	Announcement string `json:"announcement"`
 	Pic          string `json:"pic"`
 	CheerText    string `json:"cheer_text"`
-	BeginTime    struct {
+	EndTime struct {
 		D string `json:"d"`
 		T string `json:"t"`
-	} `json:"begin_time"`
+	} `json:"end_time"`
+}
+type FormDataAdminActEdit struct {
+	ActID int `json:"act_id"`
+	Name         string `json:"name"`
+	Active int `json:"active"`
+	Announcement string `json:"announcement"`
+	Pic          string `json:"pic"`
+	CheerText    string `json:"cheer_text"`
 	EndTime struct {
 		D string `json:"d"`
 		T string `json:"t"`
@@ -36,16 +44,15 @@ func adminActInfoHandler(c *gin.Context) {
 		return
 	}
 
-	//获取班级
-	class, err := getClass(auth.ClassId)
-	if err != nil {
-		Logger.Error.Println("[管理员][获取活动信息]获取班级失败", err, auth)
-		returnErrorJson(c, "系统异常(-1)")
+	actID,_ := strconv.Atoi(c.Query("act_id"))
+	if actID == 0{
+		returnErrorJson(c, "参数无效")
 		return
 	}
 
+
 	//获取活动
-	act, err := getAct(class.ActID)
+	act, err := getAct(actID)
 	if err != nil {
 		Logger.Error.Println("[管理员][获取活动信息]获取活动失败", err, auth)
 		returnErrorJson(c, "系统异常(-2)")
@@ -84,7 +91,7 @@ func adminActNewHandler(c *gin.Context) {
 	}
 
 	//与adminActEditHandler代码类似
-	form := new(FormDataAdminAct)
+	form := new(FormDataAdminActNew)
 	err = c.ShouldBindJSON(form)
 	if err != nil {
 		Logger.Info.Println("[管理员][创建活动]参数绑定失败", err, auth)
@@ -93,14 +100,8 @@ func adminActNewHandler(c *gin.Context) {
 	}
 
 	//校验时间格式是否有效
-	bt, err := dateString2ts(form.BeginTime.D + " " + form.BeginTime.T)
-	if err != nil {
-		Logger.Info.Println("[管理员][创建活动]时间校验失败", err, auth)
-		returnErrorJson(c, "开始日期或时间无效")
-		return
-	}
 	et, err := dateString2ts(form.EndTime.D + " " + form.EndTime.T)
-	if err != nil {
+	if err != nil || et<=time.Now().Unix(){
 		Logger.Info.Println("[管理员][创建活动]时间校验失败", err, auth)
 		returnErrorJson(c, "结束日期或时间无效")
 		return
@@ -121,7 +122,7 @@ func adminActNewHandler(c *gin.Context) {
 			return
 		}
 		picUrl = purl.Scheme + "://" + purl.Host + "/" + purl.Path
-		Logger.Debug.Println("[图片地址]", picUrl)
+		Logger.Info.Println("[管理员][创建活动][图片地址]", picUrl)
 	}
 
 	//字段长度校验name40 ann50 ct20 url100
@@ -132,13 +133,14 @@ func adminActNewHandler(c *gin.Context) {
 	}
 
 	//更新数据库activity
-	dbrt, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`, `name`, `announcement`, `cheer_text`, `pic`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+	dbrt, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`,`active`, `name`, `announcement`, `cheer_text`, `pic`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`) VALUES (NULL, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?);",
 		auth.ClassId,
+		1,//active
 		form.Name,
 		form.Announcement,
 		form.CheerText,
 		picUrl,
-		strconv.FormatInt(bt, 10),
+		strconv.FormatInt(time.Now().Unix(), 10),
 		strconv.FormatInt(et, 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
@@ -151,28 +153,25 @@ func adminActNewHandler(c *gin.Context) {
 	}
 	actID, _ := dbrt.LastInsertId()
 
-	//更新班级表
-	_, err = db.Exec("update `class` set `act_id`=? where `class_id`=?", actID, auth.ClassId)
-	if err != nil {
-		Logger.Error.Println("[管理员][创建活动]更新class数据库失败", err, auth)
-		returnErrorJson(c, "更新失败，请联系管理员。(-2)")
-		return
-	}
 
-	//更新缓存act+class
+	//更新缓存act+class+actIDs
 	act, err := cacheAct(int(actID))
 	if err != nil {
-		Logger.Error.Println("[管理员][创建活动]缓存活动更新失败", err, auth)
+		Logger.Error.Println("[管理员][创建活动]缓存活动失败", err, auth)
 	}
 	_, err = cacheClass(auth.ClassId)
 	if err != nil {
-		Logger.Error.Println("[管理员][创建活动]缓存班级更新失败", err, auth)
+		Logger.Error.Println("[管理员][创建活动]缓存班级失败", err, auth)
+	}
+	_, err = cacheIDs(auth.ClassId)
+	if err != nil {
+		Logger.Error.Println("[管理员][创建活动]缓存活动id失败", err, auth)
 	}
 
-	//群发消息(待修改)
+	//群发消息
 	err = newActBulkSend(auth.ClassId, act)
 	if err != nil {
-		Logger.Debug.Println("[管理员][创建活动]群发时发生错误:", err, auth)
+		Logger.Info.Println("[管理员][创建活动]群发时发生错误:", err, auth)
 	}
 
 	res := new(ResEmpty)
@@ -180,7 +179,6 @@ func adminActNewHandler(c *gin.Context) {
 	c.JSON(200, res)
 }
 
-//TODO 根据begin_time and end_time 判断active
 func adminActEditHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {
@@ -188,7 +186,7 @@ func adminActEditHandler(c *gin.Context) {
 		return
 	}
 
-	form := new(FormDataAdminAct)
+	form := new(FormDataAdminActEdit)
 	err = c.ShouldBindJSON(form)
 	if err != nil {
 		Logger.Info.Println("[管理员][编辑活动信息]参数绑定失败", err, auth)
@@ -196,15 +194,21 @@ func adminActEditHandler(c *gin.Context) {
 		return
 	}
 
-	//校验时间格式是否有效
-	bt, err := dateString2ts(form.BeginTime.D + " " + form.BeginTime.T)
+	//判断活动是否是自己班的
+	act,err := getAct(form.ActID)
 	if err != nil {
-		Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.BeginTime.D+" "+form.BeginTime.T, err, auth)
-		returnErrorJson(c, "开始日期或时间无效")
+		returnErrorJson(c, "系统异常")
 		return
 	}
+	if act.ClassID != auth.ClassId {
+		Logger.Info.Println("[管理员][编辑活动信息]无权限修改", auth,form)
+		returnErrorJson(c, "您没有权限修改此活动")
+		return
+	}
+
+	//校验时间格式是否有效
 	et, err := dateString2ts(form.EndTime.D + " " + form.EndTime.T)
-	if err != nil {
+	if err != nil || et<time.Now().Unix(){
 		Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.EndTime.D+" "+form.EndTime.T, err, auth)
 		returnErrorJson(c, "结束日期或时间无效")
 		return
@@ -235,30 +239,17 @@ func adminActEditHandler(c *gin.Context) {
 		return
 	}
 
-	//获取班级当前活动
-	class, err := getClass(auth.ClassId)
-	if err != nil {
-		Logger.Info.Println("[管理员][编辑活动信息]获取班级失败", err, auth)
-		returnErrorJson(c, "班级信息查询失败，请联系管理员。")
-		return
-	}
-	act, err := getAct(class.ActID)
-	if err != nil {
-		Logger.Info.Println("[管理员][编辑活动信息]获取活动失败", err, auth)
-		returnErrorJson(c, "活动信息查询失败，请联系管理员。")
-		return
-	}
 
 	//更新数据库
-	_, err = db.Exec("UPDATE `activity` SET `name` = ?,`announcement`=?,`pic`=?,`cheer_text`=?,`begin_time`=?,`end_time`=?,`update_time`=? WHERE `activity`.`act_id` = ?;",
+	_, err = db.Exec("UPDATE `activity` SET `name` = ?,`active`=?,`announcement`=?,`pic`=?,`cheer_text`=?,`end_time`=?,`update_time`=? WHERE `activity`.`act_id` = ?;",
 		form.Name,
+		form.Active,
 		form.Announcement,
 		picUrl,
 		form.CheerText,
-		strconv.FormatInt(bt, 10),
 		strconv.FormatInt(et, 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
-		act.ActID,
+		form.ActID,
 	)
 	if err != nil {
 		Logger.Error.Println("[管理员][编辑活动信息]更新数据库失败", err, auth)
@@ -271,10 +262,70 @@ func adminActEditHandler(c *gin.Context) {
 	if err != nil {
 		Logger.Error.Println("[管理员][编辑活动信息]缓存更新失败", err, auth)
 	}
+	_, err = cacheIDs(auth.ClassId)
+	if err != nil {
+		Logger.Error.Println("[管理员][编辑活动信息]cacheIDs失败", err, auth)
+	}
 
 	res := new(ResEmpty)
 	res.Status = 0
 	c.JSON(200, res)
+}
+
+func adminActStatisticHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	actId,err := strconv.Atoi(c.Query("act_id"))
+	if actId == 0||err!=nil{
+		Logger.Info.Println("[管理员活动数据]解析参数失败",err,auth,c.Query("act_id"))
+		returnErrorJson(c, "参数无效")
+		return
+	}
+
+	//判断是不是自己班的
+	act,err := getAct(actId)
+	if err != nil || act.ClassID != auth.ClassId{
+		returnErrorJson(c, "您没有权限查询此数据")
+		return
+	}
+
+	//获取统计数据
+	sts,err := getActStatistics(actId)
+	if err != nil {
+		returnErrorJson(c, "系统异常(-2)")
+		return
+	}
+
+	res := new(ResAdminActStatistic)
+	res.Status = 0
+	res.Data.Done = sts.Done
+	res.Data.Total = sts.Total
+	res.Data.FinishedList = make([]*AdminActStatisticItem,0)
+	res.Data.UnfinishedList = make([]*AdminActStatisticItem,0)
+
+	//装载数据
+	for i:= range sts.FinishedList{
+		res.Data.FinishedList = append(res.Data.FinishedList,&AdminActStatisticItem{
+			ID: sts.FinishedList[i].Id,
+			UserId: sts.FinishedList[i].UserID,
+			UserName: sts.FinishedList[i].Name,
+			DateTime:sts.FinishedList[i].DateTime,
+		})
+	}
+	for i:= range sts.UnfinishedList{
+		res.Data.UnfinishedList = append(res.Data.UnfinishedList,&AdminActStatisticItem{
+			ID: sts.UnfinishedList[i].Id,
+			UserId: sts.UnfinishedList[i].UserID,
+			UserName: sts.UnfinishedList[i].Name,
+			DateTime:sts.UnfinishedList[i].DateTime,
+		})
+	}
+
+	c.JSON(200,res)
 }
 
 func adminClassInfoHandler(c *gin.Context) {
@@ -290,20 +341,12 @@ func adminClassInfoHandler(c *gin.Context) {
 		returnErrorJson(c, "查询失败(-1)")
 		return
 	}
-	act, err := getAct(class.ActID)
-	if err != nil {
-		Logger.Error.Println("[管理员][获取活动信息]err", err)
-		returnErrorJson(c, "查询失败(-2)")
-		return
-	}
 
 	res := new(ResAdminClassInfo)
 	res.Status = 0
 	res.Data.ClassName = class.Name
 	res.Data.ClassCode = class.ClassCode
 	res.Data.Total = class.Total
-	res.Data.ActId = class.ActID
-	res.Data.ActName = act.Name
 
 	c.JSON(200, res)
 
@@ -346,4 +389,60 @@ func adminClassEditHandler(c *gin.Context) {
 	res := new(ResEmpty)
 	res.Status = 0
 	c.JSON(200, res)
+}
+
+func adminActListHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	res := new(ResAdminActList)
+	res.Status = 0
+	res.Data.ActiveList = make([]*adminActListItem,0)
+	res.Data.HistoryList = make([]*adminActListItem,0)
+
+	//检查活动状态
+	_,err = getActIDs(auth.ClassId)
+	if err != nil {
+		returnErrorJson(c,"系统异常")
+		return
+	}
+
+	acts := make([]dbAct,0)
+	err = db.Select(&acts,"select * from `activity` where `class_id`=?",auth.ClassId)
+	if err != nil {
+		Logger.Error.Println("[管理员活动列表]查询数据库异常",err)
+		returnErrorJson(c, "查询失败")
+		return
+	}
+	if len(acts)==0{
+		returnErrorJson(c,"当前无活动")
+		return
+	}
+
+	activeCnt := 0
+	HistoryCnt := 0
+	for i:= range acts{
+		item := new(adminActListItem)
+		item.Name = acts[i].Name
+		item.ActID = acts[i].ActID
+		item.BeginTime = ts2DateString(acts[i].BeginTime)
+		item.EndTime = ts2DateString(acts[i].EndTime)
+		item.CreateBy = queryUserName(acts[i].CreateBy)
+		if acts[i].Active == 1{
+			activeCnt++
+			item.Id = activeCnt
+			res.Data.ActiveList = append(res.Data.ActiveList,item)
+		}else{
+			HistoryCnt++
+			item.Id = HistoryCnt
+			res.Data.HistoryList = append(res.Data.HistoryList,item)
+		}
+	}
+
+	res.Data.ActiveNum = activeCnt
+	c.JSON(200,res)
+	return
 }

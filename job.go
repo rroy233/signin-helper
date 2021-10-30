@@ -5,7 +5,6 @@ import (
 	"github.com/robfig/cron/v3"
 	"math/rand"
 	"signin/Logger"
-	"strconv"
 	"time"
 )
 
@@ -63,75 +62,78 @@ func PrepareDailyNotification() {
 			continue
 		}
 
-		//获取班级实例和活动实例
-		class, err := getClass(classID)
+		//获取班级信息
+		class,err := getClass(classID)
 		if err != nil {
-			Logger.Error.Println("[定时任务][准备数据]获取班级实例失败", err)
-		}
-		act, err := getAct(class.ActID)
-		if err != nil {
-			Logger.Error.Println("[定时任务][准备数据]获取活动实例失败", err)
-		}
-
-		//判断是否在有效期内
-		nowTs := time.Now().Unix()
-		beginTs, _ := strconv.ParseInt(act.BeginTime, 10, 64)
-		endTs, _ := strconv.ParseInt(act.EndTime, 10, 64)
-		if nowTs < beginTs || nowTs > endTs {
-			//跳过
-			Logger.Info.Println("[定时任务][准备数据]班级ID:", classID, "当前无有效活动(", i+1, "/", len(classList), ")")
+			Logger.Info.Println("[定时任务][准备数据]获取班级信息失败:",classID, err)
 			continue
 		}
 
-		//获取参与数据
-		sts, err := cacheClassStatistics(classID)
+		//获取班级有效活动
+		actIDs,err := getActIDs(classID)
 		if err != nil {
-			Logger.Info.Println("[定时任务][准备数据]获取参与数据失败")
+			Logger.Info.Println("[定时任务][准备数据]获取班级有效活动失败:",classID, err)
 			continue
 		}
 
-		//若全员完成，则不发送
-		if sts.Data.Done == sts.Data.Total {
-			Logger.Info.Println("[定时任务][准备数据]班级ID:", classID, "全员完成(", i+1, "/", len(classList), ")")
-			continue
-		}
-
-		//id->user映射
-		userMap := make(map[int]*dbUser, 0)
-		for i := range users {
-			userMap[users[i].UserID] = &users[i]
-		}
-
-		//遍历班级内所有未完成的同学
-		for i := range sts.Data.UnfinishedList {
-			thisUser := userMap[sts.Data.UnfinishedList[i].UserID]
-			job, err := getTemplate(TPL_MSGTYPE_daily, TPL_LEVEL_LOW)
+		//遍历班级的每一个有效活动
+		for _,actID := range actIDs{
+			//获取参与数据
+			sts, err := cacheActStatistics(actID)
 			if err != nil {
-				Logger.Error.Println("[定时任务][准备数据]获取模板失败", err, thisUser)
+				Logger.Info.Println("[定时任务][准备数据]获取参与数据失败")
 				continue
 			}
-			var msgJson []byte
-			//判断通知方式
-			if thisUser.NotificationType == NOTIFICATION_TYPE_EMAIL {
-				job.NotificationType = NOTIFICATION_TYPE_EMAIL
-				job.Addr = thisUser.Email
-				job.Title = parseEmailTemplate(job.Title, thisUser, class, act)
-				job.Body = parseEmailTemplate(job.Body, thisUser, class, act)
-			} else if thisUser.NotificationType == NOTIFICATION_TYPE_WECHAT {
-				//微信
-				job.NotificationType = NOTIFICATION_TYPE_WECHAT
-				job.Title = parseEmailTemplate(job.Title, thisUser, class, act)
-				job.Body = parseWechatBodyTitle(job.Body,thisUser,class,act,job)
-				job.Addr = thisUser.WxPusherUid
-			}
-			msgJson, err = json.Marshal(job)
+
+			act,err := getAct(actID)
 			if err != nil {
-				Logger.Error.Println("[定时任务][准备数据]json格式化失败", err, thisUser)
+				Logger.Info.Println("[定时任务][准备数据]获取活动信息失败:",actID, err)
 				continue
 			}
-			Logger.Info.Println("[定时任务][准备数据]已添加任务:", string(msgJson))
-			//存入redis
-			rdb.LPush(ctx, "SIGNIN_APP:NOTI_LIST", string(msgJson))
+
+			//若全员完成，则不发送
+			if sts.Done == sts.Total {
+				Logger.Info.Println("[定时任务][准备数据]班级ID:", classID, "全员完成(", i+1, "/", len(classList), ")")
+				continue
+			}
+
+			//id->user映射
+			userMap := make(map[int]*dbUser, 0)
+			for i := range users {
+				userMap[users[i].UserID] = &users[i]
+			}
+
+			//遍历班级内所有未完成的同学
+			for i := range sts.UnfinishedList {
+				thisUser := userMap[sts.UnfinishedList[i].UserID]
+				job, err := getTemplate(TPL_MSGTYPE_daily, TPL_LEVEL_LOW)
+				if err != nil {
+					Logger.Error.Println("[定时任务][准备数据]获取模板失败", err, thisUser)
+					continue
+				}
+				var msgJson []byte
+				//判断通知方式
+				if thisUser.NotificationType == NOTIFICATION_TYPE_EMAIL {
+					job.NotificationType = NOTIFICATION_TYPE_EMAIL
+					job.Addr = thisUser.Email
+					job.Title = parseEmailTemplate(job.Title, thisUser, class, act)
+					job.Body = parseEmailTemplate(job.Body, thisUser, class, act)
+				} else if thisUser.NotificationType == NOTIFICATION_TYPE_WECHAT {
+					//微信
+					job.NotificationType = NOTIFICATION_TYPE_WECHAT
+					job.Title = parseEmailTemplate(job.Title, thisUser, class, act)
+					job.Body = parseWechatBodyTitle(job.Body,thisUser,class,act,job)
+					job.Addr = thisUser.WxPusherUid
+				}
+				msgJson, err = json.Marshal(job)
+				if err != nil {
+					Logger.Error.Println("[定时任务][准备数据]json格式化失败", err, thisUser)
+					continue
+				}
+				Logger.Info.Println("[定时任务][准备数据]已添加任务:", string(msgJson))
+				//存入redis
+				rdb.LPush(ctx, "SIGNIN_APP:NOTI_LIST", string(msgJson))
+			}
 		}
 
 	}

@@ -175,7 +175,6 @@ func getAct(actID int) (act *dbAct, err error) {
 	act = new(dbAct)
 	actCache := rdb.Get(ctx, "SIGNIN_APP:Act:"+strconv.FormatInt(int64(actID), 10)).Val()
 	if actCache == "" {
-		Logger.Info.Println("[DB][act]回源读取信息:", err)
 		//回源请求数据库，然后缓存
 		act, err = cacheAct(actID)
 		if err != nil {
@@ -241,30 +240,29 @@ func getActIDs(classID int) (res []int, err error) {
 	return res, err
 }
 
-func getClassStatistics(classID int) (sts *ResUserActStatistic, err error) {
-	sts = new(ResUserActStatistic)
-	stsCache := rdb.Get(ctx, "SIGNIN_APP:Class_Statistics::"+strconv.FormatInt(int64(classID), 10)).Val()
+func getActStatistics(actID int) (sts *ActStatistic, err error) {
+	sts = new(ActStatistic)
+	stsCache := rdb.Get(ctx, "SIGNIN_APP:Act_Statistic::"+strconv.FormatInt(int64(actID), 10)).Val()
 	if stsCache == "" {
-		Logger.Info.Println("[DB][ClassStatistics]回源读取信息:", err)
 		//回源请求数据库，然后缓存
-		sts, err = cacheClassStatistics(classID)
+		sts, err = cacheActStatistics(actID)
 		if err != nil {
-			Logger.Error.Println("[DB][ClassStatistics]信息回源失败:", err)
+			Logger.Error.Println("[DB][Act_Statistic]信息回源失败:", err)
 			return
 		}
 	} else {
 		err = json.Unmarshal([]byte(stsCache), sts)
 		if err != nil {
-			Logger.Error.Println("[DB][ClassStatistics]解析信息缓存失败:", err)
+			Logger.Error.Println("[DB][Act_Statistic]解析信息缓存失败:", err)
 			return
 		}
 	}
 	return sts, err
 }
 
-func queryUserName(adminID int) string {
+func queryUserName(userid int) string {
 	name := ""
-	err := db.Get(&name, "select `name` from `user` where `user_id`=?", adminID)
+	err := db.Get(&name, "select `name` from `user` where `user_id`=?", userid)
 	if err != nil {
 		Logger.Info.Println("[DB]查询username失败", err)
 		return "未知"
