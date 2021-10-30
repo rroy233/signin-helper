@@ -39,8 +39,8 @@ type ResUserProfile struct {
 type ResUserActInfo struct {
 	Res
 	Data struct {
-		Total int `json:"total"`
-		List []*userActInfo `json:"list"`
+		Total int            `json:"total"`
+		List  []*userActInfo `json:"list"`
 	} `json:"data"`
 }
 
@@ -62,7 +62,7 @@ type ResUserActStatistic struct {
 }
 
 type ActStatistic struct {
-	Done           int                `json:"done"`
+	Done           int                 `json:"done"`
 	Total          int                 `json:"total"`
 	UnfinishedList []*ActStatisticItem `json:"unfinished_list"`
 	FinishedList   []*ActStatisticItem `json:"finished_list"`
@@ -101,14 +101,12 @@ type ResUserActQuery struct {
 type ResAdminActInfo struct {
 	Res
 	Data struct {
+		ActID int `json:"act_id"`
 		Name         string `json:"name"`
+		Active bool `json:"active"`
 		Announcement string `json:"announcement"`
 		Pic          string `json:"pic"`
 		CheerText    string `json:"cheer_text"`
-		BeginTime    struct {
-			D string `json:"d"`
-			T string `json:"t"`
-		} `json:"begin_time"`
 		EndTime struct {
 			D string `json:"d"`
 			T string `json:"t"`
@@ -135,72 +133,72 @@ type ResUserWechatQrcode struct {
 
 type ResAdminActList struct {
 	Res
-	Data struct{
-		ActiveNum int `json:"active_num"`
-		ActiveList []*adminActListItem `json:"active_list"`
+	Data struct {
+		ActiveNum   int                 `json:"active_num"`
+		ActiveList  []*adminActListItem `json:"active_list"`
 		HistoryList []*adminActListItem `json:"history_list"`
-	}`json:"data"`
+	} `json:"data"`
 }
 
 type ResAdminActStatistic struct {
 	Res
-	Data struct{
-		Done           int                `json:"done"`
-		Total          int                `json:"total"`
+	Data struct {
+		Done           int                      `json:"done"`
+		Total          int                      `json:"total"`
 		UnfinishedList []*AdminActStatisticItem `json:"unfinished_list"`
 		FinishedList   []*AdminActStatisticItem `json:"finished_list"`
-	}`json:"data"`
+	} `json:"data"`
 }
 
 //自定义数据结构
 type actStatisticUser struct {
-	Id     int    `json:"id"`
-	Name   string `json:"name"`
+	Id   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 type ActStatisticItem struct {
-	Id     int    `json:"id"`
-	UserID int    `json:"user_id"`
-	ActID int `json:"act_id"`
-	LogID int `json:"log_id"`
-	Name   string `json:"name"`
+	Id       int    `json:"id"`
+	UserID   int    `json:"user_id"`
+	ActID    int    `json:"act_id"`
+	LogID    int    `json:"log_id"`
+	Name     string `json:"name"`
 	DateTime string `json:"date_time"`
 }
 
 type resActLogItem struct {
 	Id       int    `json:"id"`
-	ActId    int    `json:"act_id"`
+	ActToken string `json:"act_token"`
 	ActName  string `json:"act_name"`
 	DateTime string `json:"date_time"`
 }
 
 type userActInfo struct {
-	ActToken           string    `json:"act_token"`
+	ActToken        string `json:"act_token"`
 	ActName         string `json:"act_name"`
 	ActAnnouncement string `json:"act_announcement"`
 	ActPic          string `json:"act_pic"`
 	BeginTime       string `json:"begin_time"`
 	EndTime         string `json:"end_time"`
 	Status          int    `json:"status"`
-	Statistic struct{
-		Done int `json:"done"`
-		Total int `json:"total"`
-		Info string `json:"info"`
+	Statistic       struct {
+		Done  int    `json:"done"`
+		Total int    `json:"total"`
+		Info  string `json:"info"`
 	} `json:"statistic"`
 }
 
 type adminActListItem struct {
-	Id int `json:"id"`
-	ActID int `json:"act_id"`
-	Name string `json:"name"`
+	Id        int    `json:"id"`
+	ActID     int    `json:"act_id"`
+	Name      string `json:"name"`
 	BeginTime string `json:"begin_time"`
-	EndTime string `json:"end_time"`
-	CreateBy string `json:"create_by"`
+	EndTime   string `json:"end_time"`
+	CreateBy  string `json:"create_by"`
 }
 
 type AdminActStatisticItem struct {
-	ID int `json:"id"`
-	UserId	int `json:"user_id"`
+	ID       int    `json:"id"`
+	UserId   int    `json:"user_id"`
 	UserName string `json:"user_name"`
 	DateTime string `json:"date_time"`
 }

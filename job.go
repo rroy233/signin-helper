@@ -14,6 +14,7 @@ func initJob() {
 	crontab = cron.New(cron.WithLocation(TZ))
 	var err error
 
+
 	//数据准备
 	//每天12:29+18:29
 	_, err = crontab.AddFunc("29 12 * * ?", PrepareDailyNotification)
@@ -63,21 +64,21 @@ func PrepareDailyNotification() {
 		}
 
 		//获取班级信息
-		class,err := getClass(classID)
+		class, err := getClass(classID)
 		if err != nil {
-			Logger.Info.Println("[定时任务][准备数据]获取班级信息失败:",classID, err)
+			Logger.Info.Println("[定时任务][准备数据]获取班级信息失败:", classID, err)
 			continue
 		}
 
 		//获取班级有效活动
-		actIDs,err := getActIDs(classID)
+		actIDs, err := getActIDs(classID)
 		if err != nil {
-			Logger.Info.Println("[定时任务][准备数据]获取班级有效活动失败:",classID, err)
+			Logger.Info.Println("[定时任务][准备数据]获取班级有效活动失败:", classID, err)
 			continue
 		}
 
 		//遍历班级的每一个有效活动
-		for _,actID := range actIDs{
+		for _, actID := range actIDs {
 			//获取参与数据
 			sts, err := cacheActStatistics(actID)
 			if err != nil {
@@ -85,9 +86,9 @@ func PrepareDailyNotification() {
 				continue
 			}
 
-			act,err := getAct(actID)
+			act, err := getAct(actID)
 			if err != nil {
-				Logger.Info.Println("[定时任务][准备数据]获取活动信息失败:",actID, err)
+				Logger.Info.Println("[定时任务][准备数据]获取活动信息失败:", actID, err)
 				continue
 			}
 
@@ -122,7 +123,7 @@ func PrepareDailyNotification() {
 					//微信
 					job.NotificationType = NOTIFICATION_TYPE_WECHAT
 					job.Title = parseEmailTemplate(job.Title, thisUser, class, act)
-					job.Body = parseWechatBodyTitle(job.Body,thisUser,class,act,job)
+					job.Body = parseWechatBodyTitle(job.Body, thisUser, class, act, job)
 					job.Addr = thisUser.WxPusherUid
 				}
 				msgJson, err = json.Marshal(job)

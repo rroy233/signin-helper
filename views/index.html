@@ -69,12 +69,12 @@
       <v-card-actions>
         <v-btn
           color="orange"
-          :disabled="sign_btn.disabled"
-          @click="signin"
+          :disabled="info_item.status==1"
+          @click="signin(info_item)"
           large
           text
         >
-          {{sign_btn.text}}
+        {{info_item.status==1?'已签到':'签到'}}
         </v-btn>
         <v-btn
           color="primary"
@@ -105,7 +105,6 @@
         <!--记录-->
         <v-list three-line>
           <template v-for="(item, index) in myActLog.list">
-
             <v-list-item
                     :key="index"
             >
@@ -205,7 +204,7 @@
           </v-list-item-content>
         </v-list-item>
 
-        <v-list-item href="https://github.com/rroy233/signin-helper" link>
+        <v-list-item href="https://github.com/rroy233/signin-helper" target="_blank" link>
           <v-list-item-icon>
             <v-icon>mdi-xml</v-icon>
           </v-list-item-icon>
@@ -226,7 +225,7 @@
 
       </v-list-item-group>  
       </v-card>
-      <div class="text-caption text-center pa-6">{{version}} <br><a href="https://github.com/rroy233/signin-helper/blob/main/CHANGELOG.md" class="text-decoration-none">更新日志</a></div>
+      <div class="text-caption text-center pa-6">{{version}} <br><a href="https://github.com/rroy233/signin-helper/blob/main/CHANGELOG.md" class="text-decoration-none" target="_blank">更新日志</a></div>
       </v-container>
 
       <!-- 提示框 -->
@@ -245,25 +244,25 @@
 
       <!-- 加载框 -->
       <v-dialog
-      v-model="loading_dialog"
-      hide-overlay
-      persistent
-      width="300"
-    >
-      <v-card
-        color="light-blue"
-        dark
+        v-model="loading_dialog"
+        hide-overlay
+        persistent
+        width="300"
       >
-        <v-card-text class="mt-1">
-          加载中
-          <v-progress-linear
-            indeterminate
-            color="white"
-            class="mb-0"
-          ></v-progress-linear>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+        <v-card
+          color="light-blue"
+          dark
+        >
+          <v-card-text class="mt-1">
+            加载中
+            <v-progress-linear
+              indeterminate
+              color="white"
+              class="mb-0"
+            ></v-progress-linear>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
 
     <!-- 活动统计数据 -->
     <v-dialog
@@ -611,13 +610,13 @@
               _this.error(error)
           })
       },
-      signin:function(){
+      signin:function(info_item){
           let _this = this
           axios({
               method: 'post',
               url: backEndUrl+'/api/user/act/signin',
               data:{
-                  ts:String(Date.parse(new Date())),
+                  act_token:info_item.act_token,
               }
           }).then(function (res) {
               if (res.data.status == 0){
@@ -632,7 +631,6 @@
       },
       get_sts:function(info_item){
         let _this = this
-
         //获取统计数据
         axios({
               method: 'get',
@@ -714,7 +712,7 @@
             method: 'get',
             url: backEndUrl+'/api/user/act/query',
             params:{
-              act_id:item.act_id
+              act_token:item.act_token
             }
         }).then(function (res) {
             if (res.data.status == 0){

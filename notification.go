@@ -32,22 +32,22 @@ type NotifyJob struct {
 	Addr             string `json:"addr"`
 	Title            string `json:"title"`
 	Body             string `json:"body"`
-	Url string `json:"url"`
+	Url              string `json:"url"`
 }
 
 type wxMsgData struct {
-	AppToken    string        `json:"appToken"`
-	Content     string        `json:"content"`
-	Summary     string        `json:"summary"`
-	ContentType int           `json:"contentType"`
-	TopicIds    []string      `json:"topicIds"`
-	Uids        []string      `json:"uids"`
-	URL         string        `json:"url"`
+	AppToken    string   `json:"appToken"`
+	Content     string   `json:"content"`
+	Summary     string   `json:"summary"`
+	ContentType int      `json:"contentType"`
+	TopicIds    []string `json:"topicIds"`
+	Uids        []string `json:"uids"`
+	URL         string   `json:"url"`
 }
 
 func initMail() {
 	MailQueue = make(chan *mailyak.MailYak, config.Mail.QueueBufferSize)
-	WechatQueue = make(chan *NotifyJob,50)
+	WechatQueue = make(chan *NotifyJob, 50)
 }
 
 //新活动通知，群发给班级的所有成员
@@ -88,7 +88,7 @@ func newActBulkSend(classID int, act *dbAct) error {
 			task.NotificationType = NOTIFICATION_TYPE_WECHAT
 			task.Addr = users[i].WxPusherUid
 			task.Title = title
-			task.Body = parseWechatBodyTitle(body, &users[i], class, act,task)
+			task.Body = parseWechatBodyTitle(body, &users[i], class, act, task)
 			Logger.Info.Println("[微信推送]已创建发生任务->", users[i].Name, task)
 			WechatQueue <- task
 		}
@@ -151,25 +151,25 @@ func wechatSender(queue chan *NotifyJob) {
 		data.Content = sendConfig.Body
 		data.Summary = sendConfig.Title
 		data.ContentType = 2 //html
-		data.Uids = make([]string,1)
+		data.Uids = make([]string, 1)
 		data.Uids[0] = sendConfig.Addr
 		data.URL = sendConfig.Url
 
-		dataJson,err := json.Marshal(data)
+		dataJson, err := json.Marshal(data)
 		if err != nil {
-			Logger.Error.Println("[微信推送]", sendConfig, "json格式化失败",err)
+			Logger.Error.Println("[微信推送]", sendConfig, "json格式化失败", err)
 			break
 		}
-		resp,err := http.Post("http://wxpusher.zjiecode.com/api/send/message","application/json",bytes.NewReader(dataJson))
+		resp, err := http.Post("http://wxpusher.zjiecode.com/api/send/message", "application/json", bytes.NewReader(dataJson))
 		if err != nil {
-			Logger.Error.Println("[微信推送]", sendConfig, "请求api失败",err)
+			Logger.Error.Println("[微信推送]", sendConfig, "请求api失败", err)
 			break
 		}
 		Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功")
 		if resp.Status == "200" {
 			Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功")
-		}else{
-			Logger.Error.Println("[微信推送]", sendConfig, "获得非200响应",resp)
+		} else {
+			Logger.Error.Println("[微信推送]", sendConfig, "获得非200响应", resp)
 		}
 	}
 }
@@ -210,15 +210,15 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 	return s
 }
 
-func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct,task *NotifyJob) string {
+func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct, task *NotifyJob) string {
 
 	s = strings.Replace(s, "{{EOL}}", "<br>", -1)
 	s = strings.Replace(s, "{{space}}", "&nbsp;&nbsp;", -1)
 
-	if task.Title != ""{
-		if strings.Contains(task.Title,"<")==true{
-			task.Title = strings.Replace(task.Title,"<","【",-1)
-			task.Title = strings.Replace(task.Title,">","】",-1)
+	if task.Title != "" {
+		if strings.Contains(task.Title, "<") == true {
+			task.Title = strings.Replace(task.Title, "<", "【", -1)
+			task.Title = strings.Replace(task.Title, ">", "】", -1)
 		}
 	}
 
@@ -243,13 +243,13 @@ func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct,tas
 		jwt, err := generateJwt(user, generateJwtID(), 40*time.Minute)
 		if err != nil {
 			Logger.Error.Println("[解析模板]生成jwt失败", err)
-			s = strings.Replace(s, "{{login_url_withToken}}",token, -1)
+			s = strings.Replace(s, "{{login_url_withToken}}", token, -1)
 		} else {
 			token = config.General.BaseUrl + "/api/login?jwt=" + jwt
 			task.Url = token
-			s = strings.Replace(s, "{{login_url_withToken}}","(点击\"阅读原文\"快速签到，入口有效期40分钟)", -1)
+			s = strings.Replace(s, "{{login_url_withToken}}", "(点击\"阅读原文\"快速签到，入口有效期40分钟)", -1)
 		}
 	}
-	s = task.Title+"<br>"+s
+	s = task.Title + "<br>" + s
 	return s
 }
