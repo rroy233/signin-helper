@@ -49,8 +49,9 @@
         class="white--text align-end"
         height="200px"
         :src="info_item.act_pic"
+        gradient="to top right, rgba(0,0,0,.7), rgba(240,255,255,.3)"
       >
-        <v-card-title>
+        <v-card-title class="font-weight-black">
           {{info_item.act_name}}
         </v-card-title>
         <v-card-subtitle class="text-caption">
@@ -797,12 +798,10 @@
       color() {
         switch (this.navi_bar) {
           case 0:
-            return 'blue-grey'
-          case 1:
             return 'teal'
-          case 2:
+          case 1:
             return 'brown'
-          case 3:
+          case 2:
             return 'indigo'
           default:
             return 'blue-grey'

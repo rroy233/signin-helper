@@ -34,6 +34,7 @@
             管理员您好
         </h3>
         <div>如果遇到什么问题可以联系QQ:2867984618</div>
+        <div>系统现已支持多任务并行，您可以在发布多个签到活动了。</div>
 
         <v-divider
             class="my-4 info"
@@ -361,12 +362,18 @@
                         class="white--text align-end"
                         height="200px"
                         :src="img_preview"
+                        gradient="to top right, rgba(0,0,0,.7), rgba(240,255,255,.3)"
                     >
-                        <v-card-title>{{act_info.name}}</v-card-title>
+                        <v-card-title class="font-weight-black">
+                            {{act_info.name}}
+                          </v-card-title>
+                          <v-card-subtitle class="text-caption">
+                            还有xxx等x名同学未完成
+                          </v-card-subtitle>
                     </v-img>
                 
                     <v-card-subtitle class="pb-0">
-                        预览
+                        预览卡片
                     </v-card-subtitle>
                 
                     <v-card-text class="text--primary pt-5">
@@ -380,6 +387,13 @@
                         text
                         >
                         签到
+                        </v-btn>
+                        <v-btn
+                        color="primary"
+                        large
+                        text
+                        >
+                        完成情况
                         </v-btn>
                     </v-card-actions>
                     </v-card>
