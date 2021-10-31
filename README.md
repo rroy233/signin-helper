@@ -6,7 +6,7 @@
 
 
 
-接口文档: [devDoc.md](/docs/devDoc.md)
+接口文档: [devDoc.v1.md](/docs/devDoc.v1.md)
 
 更新日志:[CHANGELOG.md](CHANGELOG.md)
 
