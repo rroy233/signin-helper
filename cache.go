@@ -105,7 +105,7 @@ func cacheActStatistics(actID int) (res *ActStatistic, err error) {
 	}
 
 	users := make([]dbUser, 0)
-	err = db.Select(&users, "select * from `user` where `class`=?;", act.ClassID)
+	err = db.Select(&users, "select * from `user` where `class`=? ORDER BY `name` DESC;", act.ClassID)
 	if err != nil {
 		return nil, err
 	}
