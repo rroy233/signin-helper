@@ -53,7 +53,7 @@ func PrepareDailyNotification() {
 
 		//获取班级内所有用户
 		users := make([]dbUser, 0)
-		err = db.Select(&users, "select * from `user` where `notification_type` != 0 and `class`=?", classID)
+		err = db.Select(&users, "select * from `user` where `class`=?", classID)
 		if err != nil {
 			Logger.Error.Println("[定时任务][准备数据]读取user表失败", err)
 		}
@@ -125,6 +125,9 @@ func PrepareDailyNotification() {
 					job.Title = parseEmailTemplate(job.Title, thisUser, class, act)
 					job.Body = parseWechatBodyTitle(job.Body, thisUser, class, act, job)
 					job.Addr = thisUser.WxPusherUid
+				}else if thisUser.NotificationType == NOTIFICATION_TYPE_NONE {
+					//已关闭通知
+					continue
 				}
 				msgJson, err = json.Marshal(job)
 				if err != nil {
