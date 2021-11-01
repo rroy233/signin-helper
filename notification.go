@@ -188,7 +188,9 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 		s = strings.Replace(s, "{{act_name}}", act.Name, -1)
 		s = strings.Replace(s, "{{act_begin_time}}", ts2DateString(act.BeginTime), -1)
 		s = strings.Replace(s, "{{act_end_time}}", ts2DateString(act.EndTime), -1)
-		s = strings.Replace(s, "{{act_creator}}", queryUserName(act.CreateBy), -1)
+		if strings.Contains(s,"{{act_creator}}") == true{
+			s = strings.Replace(s, "{{act_creator}}", queryUserName(act.CreateBy), -1)
+		}
 	}
 
 	if class != nil {
