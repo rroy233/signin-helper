@@ -66,4 +66,9 @@ func init() {
 		adminApiGroup.GET("/class/info", adminClassInfoHandler)
 		adminApiGroup.POST("/class/edit", adminClassEditHandler)
 	}
+
+	testGroup := router.Group("/test")
+	{
+		testGroup.GET("tpl",testTplHandler)
+	}
 }
