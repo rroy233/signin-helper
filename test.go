@@ -18,9 +18,9 @@ func testTplHandler( c *gin.Context){
 		EndTime: "0",
 	}
 	html := ""
-	html += `<h1>通知模板</h1><p>以下为当前数据库下所有的通知模板，渲染规则请看<a href="https://github.com/rroy233/signin-helper/blob/main/docs/msgTemplate.md" target="_blank">github</a>，投稿请联系管理员。</p>`
+	html += `<h1>通知模板</h1><p>以下为当前数据库下所有的通知模板，解析规则请看<a href="https://github.com/rroy233/signin-helper/blob/main/docs/msgTemplate.md" target="_blank">github</a>，投稿请联系管理员。</p>`
 
-	html += `<h3>邮件推送渲染</h3><table border="1"><tr><th>ID</th><th>title</th><th>body</th></tr>`
+	html += `<h3>邮件推送解析</h3><table border="1"><tr><th>ID</th><th>title</th><th>body</th></tr>`
 	for i:= range tpls{
 		html +="<tr>"
 		html +=fmt.Sprintf("<td>%d</td>",i+1)
@@ -30,7 +30,7 @@ func testTplHandler( c *gin.Context){
 	}
 	html += `</table>`
 
-	html += `<h3>微信推送渲染</h3><table border="1"><tr><th>ID</th><th>title</th><th>body</th></tr>`
+	html += `<h3>微信推送解析</h3><table border="1"><tr><th>ID</th><th>title</th><th>body</th></tr>`
 	for i:= range tpls{
 		task := &NotifyJob{NotificationType: NOTIFICATION_TYPE_EMAIL,Addr: ""}
 		html +="<tr>"
