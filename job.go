@@ -5,6 +5,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"math/rand"
 	"signin/Logger"
+	"strconv"
 	"time"
 )
 
@@ -137,6 +138,22 @@ func PrepareDailyNotification() {
 				Logger.Info.Println("[定时任务][准备数据]已添加任务:", string(msgJson))
 				//存入redis
 				rdb.LPush(ctx, "SIGNIN_APP:NOTI_LIST", string(msgJson))
+			}
+
+			//活动参与率未达标，群发给管理员
+			if sts.Done<sts.Total {
+				timeHour := time.Now().Format("15")
+				et,err := strconv.ParseInt(act.EndTime,10,64)
+				if err != nil {
+					Logger.Error.Println("[定时任务][准备数据][群发给管理员]时间转换失败")
+				}else{
+					if (timeHour == "12" && et - time.Now().Unix() < 6*60*60) || (timeHour == "18" && et - time.Now().Unix() < 18*60*60){
+						err = ActEndingBulkSend(classID,act)
+					}
+					if err != nil {
+						Logger.Error.Println("[定时任务][准备数据][群发给管理员]发送报错：",err)
+					}
+				}
 			}
 		}
 

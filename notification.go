@@ -96,6 +96,59 @@ func newActBulkSend(classID int, act *dbAct) error {
 	return err
 }
 
+func ActEndingBulkSend(classID int, act *dbAct) error {
+	class, err := getClass(classID)
+	if err != nil {
+		return err
+	}
+
+	admins := make([]dbUser, 0)
+	err = db.Select(&admins, "select * from `user` where `class` = ? and `is_admin`=1;", class.ClassID)
+	if err != nil {
+		Logger.Error.Println("[群发][异常]群发，读取数据库失败", err)
+		return errors.New("读取数据库失败，请联系管理员")
+	}
+
+	if len(admins) == 0 {
+		return errors.New("没人是管理员")
+	}
+
+	title := "<提醒>「" + act.Name + "」参与率未达标"
+	timeHour := time.Now().Format("15")
+	body := ""
+	if timeHour == "12"{
+		body = "管理员{{username}}您好:{{EOL}}{{space}}{{space}}感谢您使用本系统。{{EOL}}{{space}}{{space}}活动「{{act_name}}」将于今天下午6:30之前结束，此时活动参与率并未达到100%，详细情况请点击链接进入系统查看。{{EOL}}{{EOL}}快捷入口：{{login_url_withToken}}"
+	}else if timeHour == "18"{
+		body = "管理员{{username}}您好:{{EOL}}{{space}}{{space}}感谢您使用本系统。{{EOL}}{{space}}{{space}}活动「{{act_name}}」将于明天中午12:30之前结束，此时活动参与率并未达到100%，详细情况请点击链接进入系统查看。{{EOL}}{{EOL}}快捷入口：{{login_url_withToken}}"
+	}else{
+		return errors.New("时间不是规定值")
+	}
+
+	for i := range admins {
+		if admins[i].NotificationType == NOTIFICATION_TYPE_EMAIL || admins[i].NotificationType == NOTIFICATION_TYPE_NONE {
+			var task *mailyak.MailYak
+			task, err = newMailTask(admins[i].Email, title, parseEmailTemplate(body, &admins[i], class, act))
+			if err != nil {
+				Logger.Error.Println("[邮件发送][异常]新建发送任务失败->", admins[i].Name, err)
+				continue
+			}
+			Logger.Info.Println("[邮件发送]已创建发生任务->", admins[i].Name, task.String())
+			//推入队列
+			MailQueue <- task
+		} else if admins[i].NotificationType == NOTIFICATION_TYPE_WECHAT {
+			//微信
+			task := new(NotifyJob)
+			task.NotificationType = NOTIFICATION_TYPE_WECHAT
+			task.Addr = admins[i].WxPusherUid
+			task.Title = title
+			task.Body = parseWechatBodyTitle(body, &admins[i], class, act, task)
+			Logger.Info.Println("[微信推送]已创建发生任务->", admins[i].Name, task)
+			WechatQueue <- task
+		}
+	}
+	return err
+}
+
 func newMailTask(mailAddr string, title string, body string) (*mailyak.MailYak, error) {
 	var mail *mailyak.MailYak
 	var err error
