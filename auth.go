@@ -110,17 +110,13 @@ func ssoCallBackHandler(c *gin.Context) {
 	state := c.Query("state")
 
 	if accessToken == "" || state == "" {
-		c.Data(200, ContentTypeHTML, views("error", map[string]string{
-			"text": "参数无效",
-		}))
+		returnErrorView(c,"参数无效(-1)")
 		return
 	}
 
 	redirectUrl := rdb.Get(ctx, "SIGNIN_APP:state:"+state).Val()
 	if redirectUrl == "" {
-		c.Data(200, ContentTypeHTML, views("error", map[string]string{
-			"text": "参数无效",
-		}))
+		returnErrorView(c,"参数无效(-2)")
 		return
 	}
 	if redirectUrl == "null" {
@@ -129,9 +125,7 @@ func ssoCallBackHandler(c *gin.Context) {
 
 	userInfo, err := ssoClient.GetUserInfo(accessToken)
 	if err != nil {
-		c.Data(200, ContentTypeHTML, views("error", map[string]string{
-			"text": "登录失败",
-		}))
+		returnErrorView(c,"登录失败:Failed To Get UserInfo!")
 		return
 	}
 
@@ -156,7 +150,7 @@ func ssoCallBackHandler(c *gin.Context) {
 		uid, err := createUser(userForm)
 		if err != nil {
 			Logger.Error.Println("[创建用户]失败:", err)
-			returnErrorJson(c, "系统异常")
+			returnErrorView(c,"系统异常(-1)")
 			return
 		}
 		//签发临时JWT
@@ -165,7 +159,7 @@ func ssoCallBackHandler(c *gin.Context) {
 		token, err := generateJwt(userForm, JID, 10*time.Minute)
 		if err != nil {
 			Logger.Error.Println("[签发临时JWT]失败:", err)
-			returnErrorJson(c, "系统异常")
+			returnErrorView(c,"系统异常(-2)")
 			return
 		}
 
@@ -186,7 +180,7 @@ func ssoCallBackHandler(c *gin.Context) {
 	token, err := generateJwt(user, jID, expTime)
 	if err != nil {
 		Logger.Error.Println("[正常签发JWT]失败:", err)
-		returnErrorJson(c, "系统异常")
+		returnErrorView(c, "系统异常")
 		return
 	}
 	storeToken(c, token) //存入cookie
@@ -211,14 +205,14 @@ func killJwt(jID string) error {
 func loginHandler(c *gin.Context) {
 	token := c.Query("jwt")
 	if token == "" {
-		returnErrorJson(c, "参数无效(-1)")
+		returnErrorView(c,"参数无效(-1)")
 		return
 	}
 
 	_, err := verifyJWTSigning(token, true)
 	if err != nil {
-		Logger.Info.Println("[login]", err)
-		returnErrorJson(c, "参数无效(-2)")
+		Logger.Info.Printf("[login]token:%s,error:%s",token,err.Error())
+		returnErrorView(c,"token无效或已过期")
 		return
 	}
 

@@ -32,7 +32,7 @@ func headerFilter(c *gin.Context, isAdmin int) {
 			return
 		}
 		if isAdmin == 1 && auth.IsAdmin != 1 {
-			returnErrorJson(c, "您无权限访问")
+			returnErrorView(c,"您无权限访问")
 			c.Abort()
 			return
 		}
@@ -42,7 +42,7 @@ func headerFilter(c *gin.Context, isAdmin int) {
 
 func middleWareRedirect(c *gin.Context) {
 	if strings.Contains(c.FullPath(), "/api/") == true {
-		returnErrorJson(c, "未授权访问")
+		returnErrorView(c,"未授权访问")
 	} else {
 		c.Redirect(302, "/sso?redirect="+url.PathEscape(c.FullPath()))
 	}

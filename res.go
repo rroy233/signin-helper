@@ -216,3 +216,7 @@ func errorRes(msg string) (r *ResEmpty) {
 func returnErrorJson(c *gin.Context, text string) {
 	c.JSON(200, errorRes(text))
 }
+
+func returnErrorView(c *gin.Context,text string)  {
+	c.Data(200,ContentTypeHTML,views("error",map[string]string{"text":text}))
+}
