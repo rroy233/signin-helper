@@ -281,7 +281,7 @@ func wxpusherCallbackHandler(c *gin.Context) {
 	}
 
 	//存储
-	_, err = db.Exec("update `user` set `wx_pusher_uid`=? and `wx_pusher_uid`=? where `user_id`=?", wxUserid,NOTIFICATION_TYPE_WECHAT, userID)
+	_, err = db.Exec("update `user` set `wx_pusher_uid`=? and `notification_type`=? where `user_id`=?", wxUserid,NOTIFICATION_TYPE_WECHAT, userID)
 	if err != nil {
 		Logger.Error.Println("[微信扫码回调]存储mysql失败:", err)
 		c.Status(400)
