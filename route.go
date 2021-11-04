@@ -68,6 +68,7 @@ func init() {
 	}
 
 	testGroup := router.Group("/test")
+	testGroup.Use(UserMiddleware)
 	{
 		testGroup.GET("tpl",testTplHandler)
 	}
