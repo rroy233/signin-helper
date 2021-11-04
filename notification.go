@@ -218,12 +218,7 @@ func wechatSender(queue chan *NotifyJob) {
 			Logger.Error.Println("[微信推送]", sendConfig, "请求api失败", err)
 			break
 		}
-		Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功")
-		if resp.Status == "200" {
-			Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功")
-		} else {
-			Logger.Error.Println("[微信推送]", sendConfig, "获得非200响应", resp)
-		}
+		Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功",resp)
 	}
 }
 

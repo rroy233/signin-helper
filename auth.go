@@ -281,7 +281,7 @@ func wxpusherCallbackHandler(c *gin.Context) {
 	}
 
 	//存储
-	_, err = db.Exec("update `user` set `wx_pusher_uid`=? where `user_id`=?", wxUserid, userID)
+	_, err = db.Exec("update `user` set `wx_pusher_uid`=? and `wx_pusher_uid`=? where `user_id`=?", wxUserid,NOTIFICATION_TYPE_WECHAT, userID)
 	if err != nil {
 		Logger.Error.Println("[微信扫码回调]存储mysql失败:", err)
 		c.Status(400)
@@ -301,8 +301,8 @@ func wxpusherCallbackHandler(c *gin.Context) {
 	task := new(NotifyJob)
 	task.NotificationType = NOTIFICATION_TYPE_WECHAT
 	task.Addr = wxUserid
-	task.Title = "【成功绑定】您已成功绑定微信账号"
-	task.Body = "请确保您处于\"接受信息\"(即不要关闭公众号的消息开关)，也不要\"删除订阅\"，如果出现问题导致无法推送，请联系管理员。"
+	task.Title = "【成功绑定】您已成功绑定微信账号。请确保您处于\"接受信息\"状态(即不要关闭公众号的消息开关)，不要\"删除订阅\"，如果出现问题导致无法推送，请联系管理员。"
+	task.Body = "请确保您处于\"接受信息\"状态(即不要关闭公众号的消息开关)，不要\"删除订阅\"，如果出现问题导致无法推送，请联系管理员。"
 	WechatQueue <- task
 
 	c.Status(200)
