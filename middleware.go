@@ -15,34 +15,47 @@ func AdminMiddleware(c *gin.Context) {
 }
 
 func headerFilter(c *gin.Context, isAdmin int) {
-	if getCookie(c, "token") == "" {
+	c.Header("Access-Control-Allow-Origin","*")
+	c.Header("Access-Control-Allow-Headers","Authorization")
+
+	token := ""
+	tokenHeader := c.GetHeader("Authorization")
+	tokenCookie := getCookie(c,"token")
+	if tokenHeader == "" && tokenCookie == ""{
 		middleWareRedirect(c)
 		c.Abort()
-	} else {
-		auth, err := verifyJWTSigning(getCookie(c, "token"), true)
-		if err != nil {
-			middleWareRedirect(c)
-			c.Abort()
-			return
+		return
+	}else{
+		if tokenCookie != ""{
+			token = tokenCookie
+		}else{
+			token = tokenHeader
 		}
-		if auth.ClassId == 0 && c.FullPath() != "/api/user/init" && c.FullPath() != "/user/reg" {
-			//未完成初始化
-			c.Redirect(302, "/user/reg")
-			c.Abort()
-			return
-		}
-		if isAdmin == 1 && auth.IsAdmin != 1 {
-			returnErrorView(c,"您无权限访问")
-			c.Abort()
-			return
-		}
-		c.Set("auth", auth)
 	}
+
+	auth, err := verifyJWTSigning(token, true)
+	if err != nil {
+		middleWareRedirect(c)
+		c.Abort()
+		return
+	}
+	if auth.ClassId == 0 && c.FullPath() != "/api/user/init" && c.FullPath() != "/user/reg" {
+		//未完成初始化
+		c.Redirect(302, "/user/reg")
+		c.Abort()
+		return
+	}
+	if isAdmin == 1 && auth.IsAdmin != 1 {
+		returnErrorView(c,"您无权限访问")
+		c.Abort()
+		return
+	}
+	c.Set("auth", auth)
 }
 
 func middleWareRedirect(c *gin.Context) {
 	if strings.Contains(c.FullPath(), "/api/") == true {
-		returnErrorView(c,"未授权访问")
+		returnErrorJson(c,"未授权访问")
 	} else {
 		c.Redirect(302, "/sso?redirect="+url.PathEscape(c.FullPath()))
 	}

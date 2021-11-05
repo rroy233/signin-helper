@@ -60,7 +60,11 @@ v1.x版本
 
 * post
 
+### 1.4 /user/version 后端版本
 
+* get
+* resp -> resVersion
+  * version
 
 ## 2. 用户端API
 
