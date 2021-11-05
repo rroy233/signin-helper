@@ -10,7 +10,18 @@ import (
 )
 
 func viewUser(c *gin.Context) {
-	c.Data(200, ContentTypeHTML, views("index"))
+	c.Data(200, ContentTypeHTML, views("dist.index"))
+}
+
+func viewIndex(c *gin.Context)  {
+	headerFilter(c, 0)
+	_, err := getAuthFromContext(c)
+	if err != nil {
+		middleWareRedirect(c)
+		return
+	}
+
+	c.Data(200, ContentTypeHTML, views("dist.index"))
 }
 
 func viewReg(c *gin.Context) {
@@ -58,4 +69,11 @@ func views(template string, params ...map[string]string) (html []byte) {
 	html = bytes.Replace(html, []byte("{{version}}"), []byte(BackEndVer), -1)
 
 	return
+}
+
+func versionHandler(c *gin.Context) {
+	res := new(resVersion)
+	res.Status = 0
+	res.Data.Version = BackEndVer
+	c.JSON(200,res)
 }

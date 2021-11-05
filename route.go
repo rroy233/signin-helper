@@ -8,9 +8,11 @@ func init() {
 	router = gin.Default()
 	gin.SetMode(gin.ReleaseMode)
 
-	router.GET("/", func(context *gin.Context) {
-		context.Redirect(302, "/user")
-	})
+	router.GET("/", viewIndex)
+	router.Static("/js", "./views/dist/js")
+	router.Static("/css", "./views/dist/css")
+	router.Static("/img", "./views/dist/img")
+
 	router.Static("/static", "./static")
 
 	router.GET("/sso", ssoRedirectHandler)
@@ -20,14 +22,6 @@ func init() {
 	userViewGroup.Use(UserMiddleware)
 	{
 		userViewGroup.GET("/reg", viewReg)
-		userViewGroup.GET("/", viewUser)
-	}
-
-	//admin view
-	adminViewGroup := router.Group("/admin")
-	adminViewGroup.Use(AdminMiddleware)
-	{
-		adminViewGroup.GET("/", viewAdmin)
 	}
 
 	//通用api
@@ -40,6 +34,7 @@ func init() {
 	userApiGroup := router.Group("/api/user")
 	userApiGroup.Use(UserMiddleware)
 	{
+		userApiGroup.GET("/version", versionHandler)
 		userApiGroup.POST("/init", initHandler)
 		userApiGroup.GET("/profile", profileHandler)
 		userApiGroup.GET("/act/info", UserActInfoHandler)

@@ -217,7 +217,7 @@ func loginHandler(c *gin.Context) {
 	}
 
 	storeToken(c, token)
-	c.Redirect(302, "/user/")
+	c.Redirect(302, "/")
 
 }
 

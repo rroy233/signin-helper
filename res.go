@@ -152,6 +152,13 @@ type ResAdminActStatistic struct {
 	} `json:"data"`
 }
 
+type resVersion struct {
+	Res
+	Data struct{
+		Version string `json:"version"`
+	}`json:"data"`
+}
+
 //自定义数据结构
 type actStatisticUser struct {
 	Id   int    `json:"id"`
