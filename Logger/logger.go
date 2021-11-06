@@ -44,8 +44,6 @@ func watcher() {
 
 			waitTime = time.Until(tm2)
 
-			Debug.Println("[系统服务][日志监控进程]" + "已确定下一个苏醒时间")
-
 			time.Sleep(waitTime) //睡眠直至第二天凌晨醒来
 		}
 		_ = logFile.Close()
