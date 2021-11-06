@@ -9,9 +9,6 @@ import (
 	"strings"
 )
 
-func viewUser(c *gin.Context) {
-	c.Data(200, ContentTypeHTML, views("dist.index"))
-}
 
 func viewIndex(c *gin.Context)  {
 	headerFilter(c, 0)
@@ -33,9 +30,6 @@ func viewReg(c *gin.Context) {
 	c.Data(200, ContentTypeHTML, views("reg"))
 }
 
-func viewAdmin(c *gin.Context) {
-	c.Data(200, ContentTypeHTML, views("admin"))
-}
 
 //模板加载函数
 func views(template string, params ...map[string]string) (html []byte) {
