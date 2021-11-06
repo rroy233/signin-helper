@@ -227,6 +227,7 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 
 	s = strings.Replace(s, "{{EOL}}", "<br>", -1)
 	s = strings.Replace(s, "{{space}}", "&nbsp;&nbsp;&nbsp;&nbsp;", -1)
+	s = strings.Replace(s, "{{time_now}}", time.Now().Format("2006年01月02日 15时04分05秒"), -1)
 
 	if user != nil {
 		s = strings.Replace(s, "{{username}}", user.Name, -1)
@@ -264,6 +265,7 @@ func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct, ta
 
 	s = strings.Replace(s, "{{EOL}}", "<br>", -1)
 	s = strings.Replace(s, "{{space}}", "&nbsp;&nbsp;", -1)
+	s = strings.Replace(s, "{{time_now}}", time.Now().Format("2006年01月02日 15时04分05秒"), -1)
 
 	if task.Title != "" {
 		if strings.Contains(task.Title, "<") == true {
