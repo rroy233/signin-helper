@@ -2,11 +2,22 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"io"
+	"os"
+	"signin/Logger"
 )
 
 func init() {
-	router = gin.Default()
+	//gin日志
+	logFile, err := os.OpenFile("./log/gin.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		Logger.FATAL.Fatalln(err)
+	}
+	gin.DefaultWriter = io.MultiWriter(logFile)
 	gin.SetMode(gin.ReleaseMode)
+
+	router = gin.Default()
+
 
 	router.GET("/", viewIndex)
 	router.Static("/js", "./views/dist/js")
