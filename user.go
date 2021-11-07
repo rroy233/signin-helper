@@ -245,7 +245,23 @@ func UserActInfoHandler(c *gin.Context) {
 			actItem.ActPic = act.Pic
 		}
 		actItem.BeginTime = ts2DateString(act.BeginTime)
-		actItem.EndTime = ts2DateString(act.EndTime)
+
+		//结束时间描述
+		et,_ := strconv.ParseInt(act.EndTime,10,64)
+		//tm次日凌晨时间
+		tm := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, TZ).AddDate(0, 0, 1)
+		if et < tm.Unix() {
+			//今天
+			actItem.EndTime = "今天" + time.Unix(et, 0).In(TZ).Format("15:04")
+		}else if et < tm.AddDate(0,0,1).Unix(){
+			//明天
+			actItem.EndTime = "明天" + time.Unix(et, 0).In(TZ).Format("15:04")
+		}else if et < tm.AddDate(0,0,2).Unix(){
+			//后天
+			actItem.EndTime = "后天" + time.Unix(et, 0).In(TZ).Format("15:04")
+		}else{
+			actItem.EndTime = ts2DateString(act.EndTime)
+		}
 
 		//查询是否已参与
 		logId := 0
