@@ -20,6 +20,10 @@ func init() {
 
 	router = gin.Default()
 	router.Use(securityMiddleware)
+	
+	router.NoRoute(func(c *gin.Context) {
+		c.Data(404,ContentTypeHTML,views("error1",map[string]string{"text":"该页面不存在"}))
+	})
 
 	router.GET("/", viewIndex)
 	router.Static("/js", "./views/dist/js")
