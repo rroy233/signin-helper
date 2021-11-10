@@ -17,7 +17,7 @@ func init() {
 	gin.SetMode(gin.ReleaseMode)
 
 	router = gin.Default()
-
+	router.Use(securityMiddleware)
 
 	router.GET("/", viewIndex)
 	router.Static("/js", "./views/dist/js")

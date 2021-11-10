@@ -159,6 +159,13 @@ type resVersion struct {
 	}`json:"data"`
 }
 
+type ResCsrfToken struct {
+	Res
+	Data struct{
+		Token string `json:"X-CSRF-TOKEN"`
+	}`json:"data"`
+}
+
 //自定义数据结构
 type actStatisticUser struct {
 	Id   int    `json:"id"`
