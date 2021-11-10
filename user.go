@@ -683,3 +683,20 @@ func UserWechatBindHandler(c *gin.Context) {
 	c.JSON(200, res)
 	return
 }
+
+func UserCsrfTokenHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	_,err = csrfMake(auth,c)
+	if err != nil {
+		Logger.Info.Println("[用户csrf]发生错误",err)
+		returnErrorJson(c,"返回csrfToken失败")
+		return
+	}
+
+	c.Status(200)
+}

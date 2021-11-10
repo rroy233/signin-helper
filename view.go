@@ -11,7 +11,7 @@ import (
 
 
 func viewIndex(c *gin.Context)  {
-	headerFilter(c, 0)
+	authorizationMiddleware(c, 0)
 	_, err := getAuthFromContext(c)
 	if err != nil {
 		middleWareRedirect(c)
