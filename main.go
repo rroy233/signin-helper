@@ -17,7 +17,6 @@ var TZ = time.FixedZone("CST", 8*3600)
 
 func main() {
 	Logger.New()
-	getConfig()
 	initDB()
 	initRedis()
 	initMail()

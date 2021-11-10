@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"signin/Logger"
 	"strings"
@@ -22,9 +23,13 @@ func viewIndex(c *gin.Context)  {
 }
 
 func viewReg(c *gin.Context) {
-	_, err := getAuthFromContext(c)
+	auth, err := getAuthFromContext(c)
 	if err != nil {
 		redirectToLogin(c)
+		return
+	}
+	if auth.ClassId != 0 {
+		c.Redirect(302,"/#/error/"+url.QueryEscape("您无需再做账号初始化"))
 		return
 	}
 	c.Data(200, ContentTypeHTML, views("reg"))
