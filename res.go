@@ -225,5 +225,5 @@ func returnErrorJson(c *gin.Context, text string) {
 }
 
 func returnErrorView(c *gin.Context,text string)  {
-	c.Data(200,ContentTypeHTML,views("error",map[string]string{"text":text}))
+	c.Data(200,ContentTypeHTML,views("error1",map[string]string{"text":text}))
 }
