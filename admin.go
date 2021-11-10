@@ -421,7 +421,7 @@ func adminActListHandler(c *gin.Context) {
 	}
 
 	acts := make([]dbAct, 0)
-	err = db.Select(&acts, "select * from `activity` where `class_id`=?", auth.ClassId)
+	err = db.Select(&acts, "select * from `activity` where `class_id`=? order by `act_id` desc;", auth.ClassId)
 	if err != nil {
 		Logger.Error.Println("[管理员活动列表]查询数据库异常", err)
 		returnErrorJson(c, "查询失败")
