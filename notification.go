@@ -79,7 +79,7 @@ func newActBulkSend(classID int, act *dbAct) error {
 				Logger.Error.Println("[邮件发送][异常]新建发送任务失败->", users[i].Name, err)
 				continue
 			}
-			Logger.Info.Println("[邮件发送]已创建发生任务->", users[i].Name, task.String())
+			Logger.Info.Println("[邮件发送]已创建发生任务->", users[i].Name)
 			//推入队列
 			MailQueue <- task
 		} else if users[i].NotificationType == NOTIFICATION_TYPE_WECHAT {
@@ -186,7 +186,7 @@ func mailSender(queue chan *mailyak.MailYak) {
 			Logger.Info.Println("[邮件]->", sendConfig.String(), "发送失败:", err)
 			continue
 		}
-		Logger.Info.Println("[邮件]", sendConfig.String(), "异步发送成功")
+		Logger.Info.Println("[邮件]", sendConfig, "异步发送成功")
 	}
 }
 

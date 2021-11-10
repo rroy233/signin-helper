@@ -8,6 +8,8 @@ import (
 )
 
 func init() {
+	getConfig()
+
 	//gin日志
 	logFile, err := os.OpenFile("./log/gin.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
@@ -58,6 +60,8 @@ func init() {
 
 		userApiGroup.GET("/wechat/qrcode", UserWechatQrcodeHandler)
 		userApiGroup.GET("/wechat/bind", UserWechatBindHandler)
+
+		userApiGroup.GET("/csrfToken",UserCsrfTokenHandler)
 	}
 
 	//管理员api
@@ -71,6 +75,8 @@ func init() {
 		adminApiGroup.GET("/act/statistic", adminActStatisticHandler)
 		adminApiGroup.GET("/class/info", adminClassInfoHandler)
 		adminApiGroup.POST("/class/edit", adminClassEditHandler)
+
+		adminApiGroup.GET("/csrfToken",AdminCsrfTokenHandler)
 	}
 
 	testGroup := router.Group("/test")

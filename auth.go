@@ -110,7 +110,7 @@ func ssoCallBackHandler(c *gin.Context) {
 	state := c.Query("state")
 
 	if accessToken == "" || state == "" {
-		returnErrorView(c,"参数无效(-1)")
+		returnErrorView(c,"参数无效(-1)(state无效)")
 		return
 	}
 
