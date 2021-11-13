@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	wx "github.com/wxpusher/wxpusher-sdk-go"
 	wxModel "github.com/wxpusher/wxpusher-sdk-go/model"
 	"signin/Logger"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,6 +23,10 @@ type FormDataSignIn struct {
 
 type FormDataUserNotiEdit struct {
 	NotiType string `json:"noti_type" binding:"required"`
+}
+
+type FormDataNotiCheck struct {
+	Token string `json:"token" binding:"required"`
 }
 
 func initHandler(c *gin.Context) {
@@ -399,6 +406,24 @@ func UserActSigninHandler(c *gin.Context) {
 		return
 	}
 
+	//检查提醒次数，判断是否需要推送提醒
+	notiTimes,err := actNotiUserTimesGet(act,auth.UserID)
+	if err == nil {
+		//成功获取
+		if notiTimes > 6{
+			noti,err := makeActInnerNoti(actID,auth.UserID,ACT_NOTI_TYPE_CH_NOTI)
+			err = pushInnerNoti(auth.UserID,noti)
+			if err != nil {
+				Logger.Error.Println("[签到][检查提醒次数]推送消息失败:",err)
+			}else{
+				err=actNotiUserTimesDel(act,auth.UserID)
+				if err != nil {
+					Logger.Error.Println("[签到][检查提醒次数]删除提醒次数失败:",err)
+				}
+			}
+		}
+	}
+
 	res := new(ResUserSignIn)
 	res.Status = 0
 	res.Data.Text = act.CheerText
@@ -699,4 +724,71 @@ func UserCsrfTokenHandler(c *gin.Context) {
 	}
 
 	c.Status(200)
+}
+
+func UserNotiCheckHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	form := new(FormDataNotiCheck)
+	err = c.ShouldBindJSON(form)
+	if err != nil {
+		Logger.Info.Println("[用户信息已读]解析参数错误:",err,auth)
+		returnErrorJson(c,"参数无效(-1)")
+		return
+	}
+
+	noti,err := rdb.Exists(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+form.Token).Result()
+	if noti != int64(1) || err != nil{
+		Logger.Info.Println("[用户信息已读]参数无效:",err,auth)
+		returnErrorJson(c,"参数无效(-2)")
+		return
+	}
+
+	rdb.Del(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+form.Token)
+
+	res := new(ResEmpty)
+	res.Status = 0
+	c.JSON(200,res)
+	return
+}
+
+func UserNotiFetchHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	//SIGNIN_APP:UserNoti:USER_{{USER_ID}}:{{noti_token}}
+	keys := rdb.Keys(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":*").Val()
+	if len(keys) == 0{
+		res := new(ResEmpty)
+		res.Status = 0
+		c.JSON(200,res)
+		return
+	}
+
+	res := new(ResUserNotiFetch)
+	res.Status = 0
+	res.Data = make([]*UserNotiFetchItem,0)
+	for i:= range keys {
+		key := strings.Split(keys[i],":")
+		if len(key) != 4{
+			Logger.Error.Println("[拉取用户消息]keys异常:",key)
+			continue
+		}
+		item := new(UserNotiFetchItem)
+		err = json.Unmarshal([]byte(rdb.Get(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+key[3]).Val()),item)
+		if err != nil {
+			Logger.Error.Println("[拉取用户消息]json反序列化失败:",err,key)
+			continue
+		}
+		res.Data = append(res.Data,item)
+	}
+
+	c.JSON(200,res)
 }

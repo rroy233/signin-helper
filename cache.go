@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"signin/Logger"
 	"strconv"
 	"time"
@@ -13,6 +14,11 @@ type CacheIDS struct {
 	Easy    []int `json:"easy"`
 	Careful []int `json:"careful"`
 }
+
+const (
+	ACT_NOTI_TYPE_CH_NOTI = "ch_noti"
+	ACT_NOTI_TYPE_TIME_WARN = "time_warn"
+)
 
 func cacheClass(classID int) (class *dbClass, err error) {
 	class = new(dbClass)
@@ -184,4 +190,26 @@ func queryActIdByActToken(actToken string) (id int, err error) {
 	}
 	id, err = strconv.Atoi(r)
 	return
+}
+
+//获取用户特定活动已提醒次数
+func actNotiUserTimesGet(act *dbAct, userID int) (int,error) {
+	tmp,err := rdb.Get(ctx,fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d",act.ActID,userID)).Result()
+	if err != nil {
+		return 0,err
+	}
+	data,_ := strconv.Atoi(tmp)
+	return data,nil
+}
+
+//存储用户特定活动已提醒次数
+func actNotiUserTimesIncr(act *dbAct, userID int) error {
+	err := rdb.Incr(ctx,fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d",act.ActID,userID)).Err()
+	return err
+}
+
+//删除用户特定活动已提醒次数
+func actNotiUserTimesDel(act *dbAct,  userID int) error {
+	err := rdb.Del(ctx,fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d",act.ActID,userID)).Err()
+	return err
 }

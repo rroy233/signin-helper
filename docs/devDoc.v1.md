@@ -221,6 +221,22 @@ v1.x版本
 
 
 
+### 2.13 /api/user/noti/check 信息已读
+
+* post
+* data -> formDataNotiCheck
+  * token
+* resp -> empty
+
+### 2.14 /api/user/noti/fetch 拉取顶置信息
+
+* get
+* resp -> resUserNotiFetch
+  * status
+  * msg
+  * data
+    * []UserNotiFetchItem
+
 ## 3. 管理端API
 
 ### 3.1 /api/admin/act/info 返回单个活动信息
@@ -468,7 +484,23 @@ v1.x版本
 
 [exp] 1h
 
-**回源，用于读取活动的基本信息，管理员更新是手动刷新缓存**
+### 5.13 UserNoti 用户消息列表
+
+[key] SIGNIN_APP:UserNoti:USER_{{USER_ID}}:{{noti_token}}
+
+[val] UserNotiFetchItem.json
+
+[exp] -1
+
+### 5.14 ActNotiTimes 此活动提醒次数
+
+[key] SIGNIN_APP:ActNotiTimes:{{act_id}}:{{UserID}}
+
+[val] (int)
+
+[exp] -1
+
+**在活动(手动/自动)结束时结算**
 
 
 
@@ -574,6 +606,20 @@ type WxPusherCallback struct {
 * user_name
 * datetime
   * 完成时间
+
+### 6.14 UserNotiFetchItem 用户顶置信息
+
+* type
+* token
+* text
+
+**token生成算法:**
+
+活动相关：md5_short(userid+actid+act_noti_type)
+
+其他：md5_short(userid+unixnano+rand)
+
+
 
 ## 7. 用户群组ID
 
