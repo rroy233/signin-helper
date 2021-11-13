@@ -239,7 +239,7 @@ func UserActInfoHandler(c *gin.Context) {
 		actItem.Statistic.Info = stsInfo
 
 		//存储actToken
-		actToken := MD5_short(strconv.FormatInt(time.Now().UnixNano(), 10) + auth.UserIdString())
+		actToken := MD5_short(auth.ID+fmt.Sprintf("%d",act.ActID))
 		rdb.Set(ctx, "SIGNIN_APP:actToken:"+actToken, strconv.FormatInt(int64(act.ActID), 10), 10*time.Minute)
 
 		actItem.ActToken = actToken
@@ -553,7 +553,7 @@ func UserActLogHandler(c *gin.Context) {
 			})
 		} else {
 			//存储actToken
-			actToken := MD5_short(strconv.FormatInt(time.Now().UnixNano(), 10) + auth.UserIdString())
+			actToken := MD5_short(auth.ID+fmt.Sprintf("%d",act.ActID))
 			rdb.Set(ctx, "SIGNIN_APP:actToken:"+actToken, strconv.FormatInt(int64(logs[i].ActID), 10), 10*time.Minute)
 			res.Data.List = append(res.Data.List, resActLogItem{
 				Id:       id,
