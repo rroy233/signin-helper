@@ -44,3 +44,53 @@ func testTplHandler( c *gin.Context){
 	html += `</table>`
 	c.Data(200,ContentTypeHTML,[]byte(html))
 }
+
+func testActNotiHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	noti,err := makeActInnerNoti(1,auth.UserID,ACT_NOTI_TYPE_CH_NOTI)
+	if err != nil {
+		returnErrorJson(c,err.Error())
+		return
+	}
+
+	err = pushInnerNoti(auth.UserID,noti)
+	if err != nil {
+		returnErrorJson(c,err.Error())
+		return
+	}
+
+	res := new(ResEmpty)
+	res.Status = 0
+	res.Msg = "已推送测试消息"
+	c.JSON(200,res)
+}
+
+func testNotiHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	noti,err := makeInnerNoti(auth.UserID)
+	if err != nil {
+		returnErrorJson(c,err.Error())
+		return
+	}
+
+	err = pushInnerNoti(auth.UserID,noti)
+	if err != nil {
+		returnErrorJson(c,err.Error())
+		return
+	}
+
+	res := new(ResEmpty)
+	res.Status = 0
+	res.Msg = "已推送测试消息"
+	c.JSON(200,res)
+}

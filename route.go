@@ -61,6 +61,8 @@ func init() {
 		userApiGroup.GET("/act/query", UserActQueryHandler)
 		userApiGroup.GET("/noti/get", UserNotiGetHandler)
 		userApiGroup.POST("/noti/edit", UserNotiEditHandler)
+		userApiGroup.POST("/noti/check", UserNotiCheckHandler)
+		userApiGroup.GET("/noti/fetch", UserNotiFetchHandler)
 
 		userApiGroup.GET("/wechat/qrcode", UserWechatQrcodeHandler)
 		userApiGroup.GET("/wechat/bind", UserWechatBindHandler)
@@ -87,5 +89,11 @@ func init() {
 	testGroup.Use(UserMiddleware)
 	{
 		testGroup.GET("tpl",testTplHandler)
+
+		//消息推送测试
+		if config.General.Production == false{
+			testGroup.GET("noti/act",testActNotiHandler)
+			testGroup.GET("noti/normal",testNotiHandler)
+		}
 	}
 }

@@ -15,6 +15,11 @@ func initJob() {
 	crontab = cron.New(cron.WithLocation(TZ))
 	var err error
 
+	if config.General.Production == false{
+		//debug
+		_, err = crontab.AddFunc("18 13 * * ?", PrepareDailyNotification)
+		_, err = crontab.AddFunc("18 13 * * ?", SendDailyNotification)
+	}
 
 	//数据准备
 	//每天12:29+18:29
@@ -138,6 +143,12 @@ func PrepareDailyNotification() {
 				Logger.Info.Println("[定时任务][准备数据]已添加任务:", string(msgJson))
 				//存入redis
 				rdb.LPush(ctx, "SIGNIN_APP:NOTI_LIST", string(msgJson))
+
+				//更新提醒次数
+				err = actNotiUserTimesIncr(act,thisUser.UserID)
+				if err != nil {
+					Logger.Error.Println("[定时任务][准备数据]更新提醒次数失败",err)
+				}
 			}
 
 			//活动参与率未达标，群发给管理员
@@ -153,6 +164,18 @@ func PrepareDailyNotification() {
 					if err != nil {
 						Logger.Error.Println("[定时任务][准备数据][群发给管理员]发送报错：",err)
 					}
+
+					//给用户推送站内警告
+					for i:=range sts.UnfinishedList{
+						thisUser := userMap[sts.UnfinishedList[i].UserID]
+						noti,err := makeActInnerNoti(actID,thisUser.UserID,ACT_NOTI_TYPE_TIME_WARN)
+						err = pushInnerNoti(thisUser.UserID,noti)
+						if err != nil {
+							Logger.Error.Println("[定时任务][准备数据]给用户推送站内警告失败：",err)
+							continue
+						}
+						Logger.Info.Printf("[定时任务][准备数据]已给%s推送站内警告:%s\n",thisUser.Name,noti.Text)
+					}
 				}
 			}
 		}
@@ -162,6 +185,9 @@ func PrepareDailyNotification() {
 }
 
 func SendDailyNotification() {
+	if config.General.Production == false{
+		time.Sleep(5*time.Second)
+	}
 	jobJsons, err := rdb.LRange(ctx, "SIGNIN_APP:NOTI_LIST", int64(0), int64(-1)).Result()
 	if err != nil {
 		Logger.Error.Println("[定时任务][发送]读取队列内容失败", err)

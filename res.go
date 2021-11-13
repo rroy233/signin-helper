@@ -16,7 +16,7 @@ type Res struct {
 
 type ResEmpty struct {
 	Res
-	Data interface{} `json:"data"`
+	Data struct{} `json:"data"`
 }
 
 type ResUserInit struct {
@@ -166,6 +166,11 @@ type ResCsrfToken struct {
 	}`json:"data"`
 }
 
+type ResUserNotiFetch struct {
+	Res
+	Data []*UserNotiFetchItem `json:"data"`
+}
+
 //自定义数据结构
 type actStatisticUser struct {
 	Id   int    `json:"id"`
@@ -217,6 +222,12 @@ type AdminActStatisticItem struct {
 	UserId   int    `json:"user_id"`
 	UserName string `json:"user_name"`
 	DateTime string `json:"date_time"`
+}
+
+type UserNotiFetchItem struct {
+	Type string `json:"type"`
+	Token string `json:"token"`
+	Text string `json:"text"`
 }
 
 //函数
