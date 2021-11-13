@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/domodwyer/mailyak/v3"
+	"math/rand"
 	"net/http"
 	"net/smtp"
 	"signin/Logger"
@@ -304,4 +306,61 @@ func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct, ta
 	}
 	s = task.Title + "<br>" + s
 	return s
+}
+
+//推送站内信息
+func pushInnerNoti(userID int,notiItem *UserNotiFetchItem) error {
+	if notiItem == nil {
+		return errors.New("notiItem为空")
+	}
+	data,err := json.Marshal(notiItem)
+	if err != nil {
+		return err
+	}
+	err = rdb.SetNX(ctx,fmt.Sprintf("SIGNIN_APP:UserNoti:USER_%d:%s",userID,notiItem.Token),data,-1).Err()
+	return err
+}
+
+func makeActInnerNoti(actID int,userID int,actNotiType string) (*UserNotiFetchItem,error) {
+	token := MD5_short(fmt.Sprintf("%d%d%s",userID,actID,actNotiType))
+	item := new(UserNotiFetchItem)
+	item.Token = token
+
+	switch actNotiType {
+	case ACT_NOTI_TYPE_CH_NOTI:
+		item.Type = "info"
+		item.Text = "请选择有效的\"通知方式\"以确保您能及时收到提醒推送"
+	case ACT_NOTI_TYPE_TIME_WARN:
+		item.Type = "warning"
+		item.Text = "请您及时完成任务并进行签到"
+	default:
+		return nil,errors.New("actNotiType无效")
+	}
+	data,err := json.Marshal(item)
+	if err != nil {
+		return nil,err
+	}
+	err = rdb.SetNX(ctx,"SIGNIN_APP:UserNoti:USER_"+fmt.Sprintf("%d",userID)+":"+token,string(data),-1).Err()
+	if err != nil {
+		return nil,err
+	}
+	return item,nil
+}
+
+func makeInnerNoti(userID int) (*UserNotiFetchItem,error) {
+	rand.Seed(time.Now().UnixNano())
+	token := MD5_short(fmt.Sprintf("%d%d%d",userID,time.Now().UnixNano(),rand.Intn(999)))
+	item := new(UserNotiFetchItem)
+	item.Token = token
+	item.Type = "info"
+	item.Text = "测试信息"+time.Now().Format("2006-01-02 15:04:05")
+	data,err := json.Marshal(item)
+	if err != nil {
+		return nil,err
+	}
+	err = rdb.SetNX(ctx,"SIGNIN_APP:UserNoti:USER_"+fmt.Sprintf("%d",userID)+":"+token,string(data),-1).Err()
+	if err != nil {
+		return nil,err
+	}
+	return item,nil
 }
