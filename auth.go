@@ -185,6 +185,13 @@ func ssoCallBackHandler(c *gin.Context) {
 	}
 	storeToken(c, token) //存入cookie
 
+	_,err = csrfMake(jID,c)
+	if err != nil {
+		Logger.Info.Println("[用户csrf]发生错误",err)
+		returnErrorView(c,"返回csrfToken失败")
+		return
+	}
+
 	c.Redirect(302, redirectUrl)
 
 }
@@ -209,14 +216,21 @@ func loginHandler(c *gin.Context) {
 		return
 	}
 
-	_, err := verifyJWTSigning(token, true)
+	auth, err := verifyJWTSigning(token, true)
 	if err != nil {
 		Logger.Info.Printf("[login]token:%s,error:%s",token,err.Error())
 		returnErrorView(c,"token无效或已过期")
 		return
 	}
-
 	storeToken(c, token)
+
+	_,err = csrfMake(auth.ID,c)
+	if err != nil {
+		Logger.Info.Println("[用户csrf]发生错误",err)
+		returnErrorView(c,"返回csrfToken失败")
+		return
+	}
+
 	c.Redirect(302, "/")
 
 }
