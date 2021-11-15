@@ -100,18 +100,18 @@ func redirectToLogin(c *gin.Context) {
 }
 
 //生成csrfToken
-func csrfMake(auth *JWTStruct,c *gin.Context) (r string,err error) {
-	tmp := rdb.Get(ctx,"SIGNIN_APP:csrfToken:"+auth.ID).Val()
+func csrfMake(jwtID string,c *gin.Context) (r string,err error) {
+	tmp := rdb.Get(ctx,"SIGNIN_APP:csrfToken:"+jwtID).Val()
 	if tmp == ""{
-		r = hex.EncodeToString(Sha256([]byte(auth.ID+strconv.FormatInt(time.Now().UnixNano(),10)+strconv.FormatInt(int64(rand.Intn(99)),10))))
-		err = rdb.Set(ctx,"SIGNIN_APP:csrfToken:"+auth.ID,r,1*time.Hour).Err()
+		r = hex.EncodeToString(Sha256([]byte(jwtID+strconv.FormatInt(time.Now().UnixNano(),10)+strconv.FormatInt(int64(rand.Intn(99)),10))))
+		err = rdb.Set(ctx,"SIGNIN_APP:csrfToken:"+jwtID,r,1*time.Hour).Err()
 		if err != nil {
 			return "", err
 		}
-		csrfSetCookie(c,r)
 	}else{
 		r = tmp
 	}
+	csrfSetCookie(c,r)
 	return r, err
 }
 

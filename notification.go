@@ -257,7 +257,7 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 		} else {
 			token = config.General.BaseUrl + "/api/login?jwt=" + jwt
 		}
-		s = strings.Replace(s, "{{login_url_withToken}}", token+" （有效期40分钟）", -1)
+		s = strings.Replace(s, "{{login_url_withToken}}", token+" （有效期40分钟,若出现错误请复制到浏览器打开）", -1)
 	}
 
 	return s
