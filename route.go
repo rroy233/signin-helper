@@ -10,7 +10,6 @@ import (
 func init() {
 	getConfig()
 
-	//gin日志
 	logFile, err := os.OpenFile("./log/gin.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		Logger.FATAL.Fatalln(err)
@@ -82,14 +81,18 @@ func init() {
 	}
 
 	testGroup := router.Group("/test")
-	testGroup.Use(UserMiddleware)
+	testGroup.Use(AdminMiddleware)
 	{
 		testGroup.GET("tpl",testTplHandler)
+	}
 
+	debugGroup := router.Group("/debug")
+	debugGroup.Use(AdminMiddleware)
+	{
 		//消息推送测试
-		if config.General.Production == false{
-			testGroup.GET("noti/act",testActNotiHandler)
-			testGroup.GET("noti/normal",testNotiHandler)
-		}
+		debugGroup.GET("noti/act",testActNotiHandler)
+		debugGroup.GET("noti/normal",testNotiHandler)
+
+		debugGroup.GET("noti/send",testTplSendHandler)
 	}
 }

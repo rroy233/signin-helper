@@ -55,8 +55,12 @@ type dbLog struct {
 }
 
 type dbTplItem struct {
+	TplID int `db:"tpl_id" json:"tpl_id"`
+	MsgType int `json:"msg_type" db:"msg_type"`
+	Level int `json:"level" db:"level"`
 	Title string `db:"title" json:"title"`
 	Body  string `db:"body" json:"body"`
+	Enabled int `json:"enabled" db:"enabled"`
 }
 
 const (
