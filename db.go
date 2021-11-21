@@ -229,7 +229,7 @@ func getActIDs(classID int) (res []int, err error) {
 			return
 		}
 		var et int64
-		et, err = strconv.ParseInt(ts2DateString(act.EndTime), 10, 64)
+		et, err = strconv.ParseInt(act.EndTime, 10, 64)
 		if err != nil {
 			Logger.Error.Println("[cache][cacheIDs]解析时间失败:", err)
 			return
