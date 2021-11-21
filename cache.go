@@ -63,9 +63,6 @@ func cacheIDs(classID int) (ids *CacheIDS, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(acts) == 0 {
-		return ids, nil
-	}
 
 	for i := range acts {
 		var et int64
@@ -100,7 +97,10 @@ func cacheIDs(classID int) (ids *CacheIDS, err error) {
 		Logger.Error.Println("[cache][cacheIDs]信息回源读取,json失败:", err)
 		return
 	}
-	rdb.Set(ctx, "SIGNIN_APP:Class_Active_Act:"+strconv.FormatInt(int64(classID), 10), data, 1*time.Minute)
+	err = rdb.Set(ctx, "SIGNIN_APP:Class_Active_Act:"+strconv.FormatInt(int64(classID), 10), data, 1*time.Minute).Err()
+	if err != nil {
+		return nil,err
+	}
 	return
 }
 
