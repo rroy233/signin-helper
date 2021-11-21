@@ -208,17 +208,24 @@ func adminActEditHandler(c *gin.Context) {
 	}
 
 	var et int64
-	//校验时间格式是否有效
-	if form.Active == false{
-		et = time.Now().Unix()
-	}else{
-		et, err = dateString2ts(form.EndTime.D + " " + form.EndTime.T)
-		if err != nil || et < time.Now().Unix() {
-			Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.EndTime.D+" "+form.EndTime.T, err, auth)
-			returnErrorJson(c, "结束日期或时间无效")
-			return
+	//校验时间格式是否有效(仅在变更活动状态时检查)
+	endTime := ""
+	if (form.Active == true && act.Active == 0)||(form.Active == false && act.Active == 1) {//et有变更
+		if form.Active == false{
+			et = time.Now().Unix()
+		}else{
+			et, err = dateString2ts(form.EndTime.D + " " + form.EndTime.T)
+			if err != nil || et < time.Now().Unix() {
+				Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.EndTime.D+" "+form.EndTime.T, err, auth)
+				returnErrorJson(c, "结束日期或时间无效")
+				return
+			}
 		}
+		endTime = strconv.FormatInt(et, 10)
+	}else{//et无变更
+		endTime = act.EndTime
 	}
+
 
 	//校验图片地址
 	picUrl := ""
@@ -257,7 +264,7 @@ func adminActEditHandler(c *gin.Context) {
 		form.Announcement,
 		picUrl,
 		form.CheerText,
-		strconv.FormatInt(et, 10),
+		endTime,
 		strconv.FormatInt(time.Now().Unix(), 10),
 		form.ActID,
 	)
