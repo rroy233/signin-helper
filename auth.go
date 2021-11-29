@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"signin/Logger"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -72,7 +73,7 @@ func generateJwt(user *dbUser, JwtID string, expTime time.Duration) (s string, e
 	}
 
 	//存redis
-	rdb.Set(ctx, "SIGNIN_APP:JWT:"+JwtID, user.UserID, expTime)
+	rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:%s",user.UserID,JwtID), user.UserID, expTime)
 
 	return s, nil
 }
@@ -91,7 +92,7 @@ func verifyJWTSigning(tokenString string, checkRedis bool) (auth *JWTStruct, err
 			return []byte(config.General.JwtKey), nil
 		})
 		if claims, ok := t.Claims.(*JWTStruct); ok && token.Valid {
-			uid := rdb.Get(ctx, "SIGNIN_APP:JWT:"+claims.ID).Val()
+			uid := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:%s",claims.UserID,claims.ID)).Val()
 			if uid != strconv.FormatInt(int64(claims.UserID), 10) {
 				err = errors.New("JWT已失效")
 				return nil, err
@@ -197,8 +198,19 @@ func ssoCallBackHandler(c *gin.Context) {
 }
 
 //吊销jwt
-func killJwt(jID string) error {
-	r, err := rdb.Del(ctx, "SIGNIN_APP:JWT:"+jID).Result()
+func killJwtByJID(jID string) error {
+	keys := rdb.Keys(ctx,"*:"+jID).Val()
+	if len(keys)==0{
+		return errors.New("jwt不存在")
+	}
+	if strings.Contains(keys[0],"SIGNIN_APP") == false{
+		return errors.New("jwt不存在，前缀不匹配")
+	}
+	return doKillJWT(keys[0])
+}
+
+func doKillJWT(JwtKey string) error {
+	r, err := rdb.Del(ctx, JwtKey).Result()
 	if r == int64(0) || err != nil {
 		if err != nil {
 			return errors.New("吊销失败:" + err.Error())
@@ -207,6 +219,19 @@ func killJwt(jID string) error {
 		}
 	}
 	return nil
+}
+
+func killJwtByUID(UID int)  {
+	keys := rdb.Keys(ctx,fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:*",UID)).Val()
+	if len(keys)==0{
+		return
+	}
+	for i:= range keys{
+		if err := doKillJWT(keys[i]);err!=nil{
+			Logger.Error.Println("[killJwtByUID]发生错误:",err,keys[i])
+		}
+	}
+	return
 }
 
 func loginHandler(c *gin.Context) {
@@ -250,7 +275,7 @@ func logoutHandler(c *gin.Context) {
 	}
 
 	//吊销凭证
-	err = killJwt(auth.ID)
+	err = killJwtByJID(auth.ID)
 	if err != nil {
 		returnErrorJson(c, "吊销失败")
 		return

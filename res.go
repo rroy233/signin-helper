@@ -171,6 +171,14 @@ type ResUserNotiFetch struct {
 	Data []*UserNotiFetchItem `json:"data"`
 }
 
+type ResAdminUserList struct {
+	Res
+	Data struct{
+		Count int `json:"count"`
+		Data []AdminUserListItem `json:"data"`
+	}`json:"data"`
+}
+
 //自定义数据结构
 type actStatisticUser struct {
 	Id   int    `json:"id"`
@@ -230,6 +238,12 @@ type UserNotiFetchItem struct {
 	Text string `json:"text"`
 }
 
+type AdminUserListItem struct {
+	ID int `json:"id"`
+	UserID int `json:"user_id"`
+	Name string `json:"name"`
+	Sign string `json:"sign"`
+}
 //函数
 func errorRes(msg string) (r *ResEmpty) {
 	r = new(ResEmpty)

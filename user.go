@@ -141,7 +141,7 @@ func initHandler(c *gin.Context) {
 	res.Data.NewJWT = newJwt
 
 	//吊销旧jwt
-	err = killJwt(auth.ID)
+	err = killJwtByJID(auth.ID)
 	if err != nil {
 		Logger.Error.Println("[初始化]吊销旧jwt失败:", err)
 		res.Status = -1

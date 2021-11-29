@@ -78,6 +78,9 @@ func init() {
 		adminApiGroup.GET("/act/statistic", adminActStatisticHandler)
 		adminApiGroup.GET("/class/info", adminClassInfoHandler)
 		adminApiGroup.POST("/class/edit", adminClassEditHandler)
+
+		adminApiGroup.GET("/user/list", adminUserListHandler)
+		adminApiGroup.POST("/user/del", adminUserDelHandler)
 	}
 
 	testGroup := router.Group("/test")

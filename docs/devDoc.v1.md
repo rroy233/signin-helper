@@ -342,6 +342,22 @@ v1.x版本
 
 存cookie
 
+### 3.9 /api/admin/user/list 用户列表
+
+* get
+* resp -> resAdminUserList
+  * count
+  * data []adminUserListItem
+
+### 3.10 /api/admin/user/del 删除用户
+
+* post
+* data: formDataAdminUserDel
+  * user_id
+  * sign
+
+
+
 ## 4. JWT 结构
 
 ### 4.1 header
@@ -377,7 +393,7 @@ v1.x版本
 
 ### 5.1 JWT存根
 
-[key] SIGNIN_APP:JWT:{ JWT ID }
+[key] SIGNIN_APP:JWT:USER_{UID}:{ JWT ID }
 
 [val] user_id
 
@@ -618,6 +634,14 @@ type WxPusherCallback struct {
 活动相关：md5_short(userid+actid+act_noti_type)
 
 其他：md5_short(userid+unixnano+rand)
+
+### 6.15 adminUserListItem 管理员用户列表
+
+* id
+* user_id
+* name
+* sign
+  * 签名
 
 
 

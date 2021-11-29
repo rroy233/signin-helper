@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/url"
 	"signin/Logger"
@@ -35,6 +36,11 @@ type FormDataAdminActEdit struct {
 type FormDataAdminClassEdit struct {
 	ClassName string `json:"class_name"`
 	ClassCode string `json:"class_code"`
+}
+
+type FormDataAdminUserDel struct {
+	UserID int `json:"user_id"`
+	Sign string `json:"sign"`
 }
 
 func adminActInfoHandler(c *gin.Context) {
@@ -464,4 +470,91 @@ func adminActListHandler(c *gin.Context) {
 	return
 }
 
+func adminUserListHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
 
+	users := make([]dbUser,0)
+	err = db.Select(&users,"select * from `user` where `class`=?",auth.ClassId)
+	if err != nil {
+		Logger.Error.Println("[管理员用户列表]查询db失败:",err)
+		returnErrorJson(c, "系统异常")
+		return
+	}
+
+	res := new(ResAdminUserList)
+	res.Status = 0
+	res.Data.Count = len(users)
+	res.Data.Data = make([]AdminUserListItem,0)
+
+	for i:=range users{
+		res.Data.Data = append(res.Data.Data,AdminUserListItem{
+			ID: i+1,
+			UserID: users[i].UserID,
+			Name:users[i].Name,
+			Sign: MD5_short(fmt.Sprintf("%d%d%s_roy233com",users[i].UserID,auth.ClassId,auth.ID)),
+		})
+	}
+
+	c.JSON(200,res)
+
+}
+
+func adminUserDelHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	form := new(FormDataAdminUserDel)
+	err = c.ShouldBindJSON(form)
+	if err != nil {
+		Logger.Info.Println("[管理员删除用户]参数绑定失败:",err)
+		returnErrorJson(c, "参数无效")
+		return
+	}
+
+	if form.Sign != MD5_short(fmt.Sprintf("%d%d%s_roy233com",form.UserID,auth.ClassId,auth.ID)){
+		Logger.Info.Println("[管理员删除用户]数据签名无效:",form)
+		returnErrorJson(c, "数据签名无效")
+		return
+	}
+
+	res := new(ResEmpty)
+	res.Status = 0
+
+	//查询用户信息
+	user := new(dbUser)
+	err = db.Get(user,"select * from `user` where `user_id`=?",form.UserID)
+	if err != nil {
+		Logger.Info.Println("[管理员删除用户]查询用户信息失败:",err)
+		returnErrorJson(c, "查询用户信息失败")
+		return
+	}
+
+
+	_,err = db.Exec("update `user` set `class`=0 where `user_id`=? and `class` = ?",form.UserID,auth.ClassId)
+	if err != nil {
+		Logger.Info.Println("[管理员删除用户]更新数据库失败:",err)
+		returnErrorJson(c, "更新数据库失败")
+		return
+	}
+
+	result,err := db.Exec("update  `signin_log` set `class_id`=-1 where `user_id`=?",form.UserID)
+	if err != nil {
+		Logger.Info.Println("[管理员删除用户]更新数据库失败:",err)
+		returnErrorJson(c, "系统异常")
+		return
+	}
+	num,_ := result.RowsAffected()
+	res.Msg = fmt.Sprintf("已删除%d条签到记录",num)
+	Logger.Info.Println("[管理员删除用户]:",user,"已被踢出班级，操作者：",auth,"删除记录条数:",num)
+
+	killJwtByUID(form.UserID)
+
+	c.JSON(200,res)
+}
