@@ -39,8 +39,12 @@ type FormDataAdminClassEdit struct {
 }
 
 type FormDataAdminUserDel struct {
-	UserID int `json:"user_id"`
-	Sign string `json:"sign"`
+	UserID int    `json:"user_id"`
+	Sign   string `json:"sign"`
+}
+
+type FormDataAdminActExport struct {
+	ActID int `json:"act_id" binding:"required"`
 }
 
 func adminActInfoHandler(c *gin.Context) {
@@ -513,13 +517,13 @@ func adminUserDelHandler(c *gin.Context) {
 	form := new(FormDataAdminUserDel)
 	err = c.ShouldBindJSON(form)
 	if err != nil {
-		Logger.Info.Println("[管理员删除用户]参数绑定失败:",err)
+		Logger.Info.Println("[管理员删除用户]参数绑定失败:", err)
 		returnErrorJson(c, "参数无效")
 		return
 	}
 
-	if form.Sign != MD5_short(fmt.Sprintf("%d%d%s_roy233com",form.UserID,auth.ClassId,auth.ID)){
-		Logger.Info.Println("[管理员删除用户]数据签名无效:",form)
+	if form.Sign != MD5_short(fmt.Sprintf("%d%d%s_roy233com", form.UserID, auth.ClassId, auth.ID)) {
+		Logger.Info.Println("[管理员删除用户]数据签名无效:", form)
 		returnErrorJson(c, "数据签名无效")
 		return
 	}
@@ -529,32 +533,145 @@ func adminUserDelHandler(c *gin.Context) {
 
 	//查询用户信息
 	user := new(dbUser)
-	err = db.Get(user,"select * from `user` where `user_id`=?",form.UserID)
+	err = db.Get(user, "select * from `user` where `user_id`=?", form.UserID)
 	if err != nil {
-		Logger.Info.Println("[管理员删除用户]查询用户信息失败:",err)
+		Logger.Info.Println("[管理员删除用户]查询用户信息失败:", err)
 		returnErrorJson(c, "查询用户信息失败")
 		return
 	}
 
-
-	_,err = db.Exec("update `user` set `class`=0 where `user_id`=? and `class` = ?",form.UserID,auth.ClassId)
+	//获取记录，删除文件
+	files := make([]dbFile,0)
+	err = db.Select(&files,"select * from `file` where `user_id`=? and `status`=1",auth.UserID)
 	if err != nil {
-		Logger.Info.Println("[管理员删除用户]更新数据库失败:",err)
+		Logger.Info.Println("[管理员删除用户]获取文件上传记录失败:", err)
+		returnErrorJson(c, "获取文件上传记录失败")
+		return
+	}
+	for i := range files{
+		err := cosFileDel(files[i].Remote)
+		if err != nil {
+			Logger.Error.Println("[管理员删除用户]远端文件删除失败:",files[i].Remote,err)
+		}
+	}
+	_,err=db.Exec("update `file` set `status`=-1 where `user_id`=?",auth.UserID)
+	if err != nil {
+		Logger.Error.Println("[管理员删除用户]更新db.file失败:",err)
+	}
+
+	_, err = db.Exec("update `user` set `class`=0 where `user_id`=? and `class` = ?", form.UserID, auth.ClassId)
+	if err != nil {
+		Logger.Info.Println("[管理员删除用户]更新数据库失败:", err)
 		returnErrorJson(c, "更新数据库失败")
 		return
 	}
 
-	result,err := db.Exec("update  `signin_log` set `class_id`=-1 where `user_id`=?",form.UserID)
+	result, err := db.Exec("delete from `signin_log`  where `user_id`=?", form.UserID)
 	if err != nil {
-		Logger.Info.Println("[管理员删除用户]更新数据库失败:",err)
+		Logger.Info.Println("[管理员删除用户]更新数据库失败:", err)
 		returnErrorJson(c, "系统异常")
 		return
 	}
-	num,_ := result.RowsAffected()
-	res.Msg = fmt.Sprintf("已删除%d条签到记录",num)
-	Logger.Info.Println("[管理员删除用户]:",user,"已被踢出班级，操作者：",auth,"删除记录条数:",num)
+	num, _ := result.RowsAffected()
+	res.Msg = fmt.Sprintf("已删除%d条签到记录", num)
+	Logger.Info.Println("[管理员删除用户]:", user, "已被踢出班级，操作者：", auth, "删除记录条数:", num)
 
 	killJwtByUID(form.UserID)
 
+	c.JSON(200, res)
+}
+
+func AdminActExportHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	form := new(FormDataAdminActExport)
+	err = c.ShouldBindJSON(form)
+	if err != nil {
+		Logger.Info.Println("[管理员导出数据]参数绑定失败：",err)
+		returnErrorJson(c,"参数无效(-1)")
+		return
+	}
+
+	act,err := getAct(form.ActID)
+	if err != nil {
+		Logger.Error.Println("[管理员导出数据]获取活动失败：",err)
+		returnErrorJson(c,"获取活动失败")
+		return
+	}
+
+	if act.ClassID != auth.ClassId {
+		Logger.Error.Println("[管理员导出数据]班级不匹配：",auth,form)
+		returnErrorJson(c,"参数无效(-2)")
+		return
+	}
+
+	if act.Type != ACT_TYPE_UPLOAD {
+		returnErrorJson(c,"当前活动未开启文件上传")
+		return
+	}
+
+	files := make([]dbFile,0)
+	err = db.Select(&files,"select * from `file` where `act_id`=? and `status` = 1",act.ActID)
+	if err != nil {
+		Logger.Error.Println("[管理员导出数据]查询数据库失败：",err)
+		returnErrorJson(c,"查询数据库失败")
+		return
+	}
+
+	if len(files) == 0{
+		returnErrorJson(c,"文件数为0")
+		return
+	}
+
+	//创建目录
+	dirName := act.Name+"_批量导出_" + fmt.Sprintf("%d",time.Now().Unix())
+	err = os.Mkdir("./storage/temp/"+dirName,os.ModePerm)
+	if err != nil {
+		Logger.Error.Println("[管理员导出数据]创建目录失败：",err)
+		returnErrorJson(c,"系统异常(-1)")
+		return
+	}
+
+	errCnt := 0
+	for i := range files{
+		fileName := files[i].FileName + fileExt[files[i].ContentType]
+		if e,_ := FsExists(fmt.Sprintf("./storage/temp/%s/%s",dirName,fileName));e!=false{
+			fileName = fmt.Sprintf("%s_%s%s",files[i].FileName,MD5_short(fmt.Sprintf("%d",time.Now().UnixNano())),fileExt[files[i].ContentType])
+		}
+		err = cosDownload(files[i].Remote,fmt.Sprintf("./storage/temp/%s/%s",dirName,fileName))
+		if err != nil {
+			Logger.Error.Printf("[管理员导出数据]下载文件失败：%s --> %s : err:%s\n",files[i].Remote,fileName,err)
+			errCnt++
+		}
+	}
+
+	f,err := os.Open("./storage/temp/"+dirName)
+	if err != nil {
+		Logger.Error.Println("[管理员导出数据]打开目录失败：",err)
+		returnErrorJson(c,"系统异常(-2)")
+		return
+	}
+	var fs = []*os.File{f}
+	err = Compress(fs,"./static/"+dirName+".zip")
+	if err != nil {
+		Logger.Error.Println("[管理员导出数据]压缩失败：",err)
+		returnErrorJson(c,"系统异常(-3)")
+		return
+	}
+
+	cleanTime := 5
+	if config.General.Production == false{
+		cleanTime = 1
+	}
+	go trashCleaner("./storage/temp/"+dirName,0)
+	go trashCleaner("./static/"+dirName+".zip",cleanTime)
+
+	res := new(ResAdminActExport)
+	res.Status = 0
+	res.Data.DownloadUrl = config.General.BaseUrl+"/static/"+dirName+".zip"
 	c.JSON(200,res)
 }
