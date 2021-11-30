@@ -16,7 +16,7 @@ type CacheIDS struct {
 }
 
 const (
-	ACT_NOTI_TYPE_CH_NOTI = "ch_noti"
+	ACT_NOTI_TYPE_CH_NOTI   = "ch_noti"
 	ACT_NOTI_TYPE_TIME_WARN = "time_warn"
 )
 
@@ -99,7 +99,7 @@ func cacheIDs(classID int) (ids *CacheIDS, err error) {
 	}
 	err = rdb.Set(ctx, "SIGNIN_APP:Class_Active_Act:"+strconv.FormatInt(int64(classID), 10), data, 1*time.Minute).Err()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return
 }
@@ -193,23 +193,23 @@ func queryActIdByActToken(actToken string) (id int, err error) {
 }
 
 //获取用户特定活动已提醒次数
-func actNotiUserTimesGet(act *dbAct, userID int) (int,error) {
-	tmp,err := rdb.Get(ctx,fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d",act.ActID,userID)).Result()
+func actNotiUserTimesGet(act *dbAct, userID int) (int, error) {
+	tmp, err := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID)).Result()
 	if err != nil {
-		return 0,err
+		return 0, err
 	}
-	data,_ := strconv.Atoi(tmp)
-	return data,nil
+	data, _ := strconv.Atoi(tmp)
+	return data, nil
 }
 
 //存储用户特定活动已提醒次数
 func actNotiUserTimesIncr(act *dbAct, userID int) error {
-	err := rdb.Incr(ctx,fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d",act.ActID,userID)).Err()
+	err := rdb.Incr(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID)).Err()
 	return err
 }
 
 //删除用户特定活动已提醒次数
-func actNotiUserTimesDel(act *dbAct,  userID int) error {
-	err := rdb.Del(ctx,fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d",act.ActID,userID)).Err()
+func actNotiUserTimesDel(act *dbAct, userID int) error {
+	err := rdb.Del(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID)).Err()
 	return err
 }

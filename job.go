@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/robfig/cron/v3"
 	"math/rand"
+	"os"
 	"signin/Logger"
 	"strconv"
 	"time"
@@ -15,7 +16,7 @@ func initJob() {
 	crontab = cron.New(cron.WithLocation(TZ))
 	var err error
 
-	if config.General.Production == false{
+	if config.General.Production == false {
 		//debug
 		_, err = crontab.AddFunc("18 13 * * ?", PrepareDailyNotification)
 		_, err = crontab.AddFunc("18 13 * * ?", SendDailyNotification)
@@ -98,6 +99,11 @@ func PrepareDailyNotification() {
 				continue
 			}
 
+			//判断是否关闭每日提醒
+			if act.DailyNotiEnabled == 0 {
+				continue
+			}
+
 			//若全员完成，则不发送
 			if sts.Done == sts.Total {
 				Logger.Info.Println("[定时任务][准备数据]班级ID:", classID, "全员完成(", i+1, "/", len(classList), ")")
@@ -131,7 +137,7 @@ func PrepareDailyNotification() {
 					job.Title = parseEmailTemplate(job.Title, thisUser, class, act)
 					job.Body = parseWechatBodyTitle(job.Body, thisUser, class, act, job)
 					job.Addr = thisUser.WxPusherUid
-				}else if thisUser.NotificationType == NOTIFICATION_TYPE_NONE {
+				} else if thisUser.NotificationType == NOTIFICATION_TYPE_NONE {
 					//已关闭通知
 					continue
 				}
@@ -145,36 +151,36 @@ func PrepareDailyNotification() {
 				rdb.LPush(ctx, "SIGNIN_APP:NOTI_LIST", string(msgJson))
 
 				//更新提醒次数
-				err = actNotiUserTimesIncr(act,thisUser.UserID)
+				err = actNotiUserTimesIncr(act, thisUser.UserID)
 				if err != nil {
-					Logger.Error.Println("[定时任务][准备数据]更新提醒次数失败",err)
+					Logger.Error.Println("[定时任务][准备数据]更新提醒次数失败", err)
 				}
 			}
 
 			//活动参与率未达标，群发给管理员
-			if sts.Done<sts.Total {
+			if sts.Done < sts.Total {
 				timeHour := time.Now().Format("15")
-				et,err := strconv.ParseInt(act.EndTime,10,64)
+				et, err := strconv.ParseInt(act.EndTime, 10, 64)
 				if err != nil {
 					Logger.Error.Println("[定时任务][准备数据][群发给管理员]时间转换失败")
-				}else{
-					if (timeHour == "12" && et - time.Now().Unix() < 6*60*60) || (timeHour == "18" && et - time.Now().Unix() < 18*60*60){
-						err = ActEndingBulkSend(classID,act)
+				} else {
+					if (timeHour == "12" && et-time.Now().Unix() < 6*60*60) || (timeHour == "18" && et-time.Now().Unix() < 18*60*60) {
+						err = ActEndingBulkSend(classID, act)
 					}
 					if err != nil {
-						Logger.Error.Println("[定时任务][准备数据][群发给管理员]发送报错：",err)
+						Logger.Error.Println("[定时任务][准备数据][群发给管理员]发送报错：", err)
 					}
 
 					//给用户推送站内警告
-					for i:=range sts.UnfinishedList{
+					for i := range sts.UnfinishedList {
 						thisUser := userMap[sts.UnfinishedList[i].UserID]
-						noti,err := makeActInnerNoti(actID,thisUser.UserID,ACT_NOTI_TYPE_TIME_WARN)
-						err = pushInnerNoti(thisUser.UserID,noti)
+						noti, err := makeActInnerNoti(actID, thisUser.UserID, ACT_NOTI_TYPE_TIME_WARN)
+						err = pushInnerNoti(thisUser.UserID, noti)
 						if err != nil {
-							Logger.Error.Println("[定时任务][准备数据]给用户推送站内警告失败：",err)
+							Logger.Error.Println("[定时任务][准备数据]给用户推送站内警告失败：", err)
 							continue
 						}
-						Logger.Info.Printf("[定时任务][准备数据]已给%s推送站内警告:%s\n",thisUser.Name,noti.Text)
+						Logger.Info.Printf("[定时任务][准备数据]已给%s推送站内警告:%s\n", thisUser.Name, noti.Text)
 					}
 				}
 			}
@@ -185,8 +191,8 @@ func PrepareDailyNotification() {
 }
 
 func SendDailyNotification() {
-	if config.General.Production == false{
-		time.Sleep(5*time.Second)
+	if config.General.Production == false {
+		time.Sleep(5 * time.Second)
 	}
 	jobJsons, err := rdb.LRange(ctx, "SIGNIN_APP:NOTI_LIST", int64(0), int64(-1)).Result()
 	if err != nil {
@@ -237,4 +243,15 @@ func getTemplate(msgType int, level int) (*NotifyJob, error) {
 	job.Title = tpls[id].Title
 	job.Body = tpls[id].Body
 	return job, err
+}
+
+func trashCleaner(fileName string,minute int){
+	Logger.Info.Println("[自动清理]已收到任务清理:",fileName)
+	time.Sleep(time.Duration(minute)*time.Minute)
+	err := os.RemoveAll(fileName)
+	if err != nil {
+		Logger.Info.Println("[自动清理]清理:",fileName,"失败:",err)
+	}else{
+		Logger.Info.Println("[自动清理]清理:",fileName,"成功")
+	}
 }

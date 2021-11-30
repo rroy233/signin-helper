@@ -42,6 +42,12 @@ type Struct struct {
 	WxPusher struct {
 		AppToken string `yaml:"app_token"`
 	} `yaml:"wx_pusher"`
+	Cos struct {
+		BucketUrl string `yaml:"bucket_url"`
+		BasePath  string `yaml:"base_path"`
+		SecretID  string `yaml:"secret_id"`
+		SecretKey string `yaml:"secret_key"`
+	} `yaml:"cos"`
 }
 
 // getConfig 读取配置文件并返回

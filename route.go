@@ -19,9 +19,10 @@ func init() {
 
 	router = gin.Default()
 	router.Use(securityMiddleware)
-	
+	router.MaxMultipartMemory = 100 << 20 // 100 MiB
+
 	router.NoRoute(func(c *gin.Context) {
-		c.Data(404,ContentTypeHTML,views("error1",map[string]string{"text":"该页面不存在"}))
+		c.Data(404, ContentTypeHTML, views("error1", map[string]string{"text": "该页面不存在"}))
 	})
 
 	router.GET("/", viewIndex)
@@ -56,6 +57,8 @@ func init() {
 		userApiGroup.GET("/act/info", UserActInfoHandler)
 		userApiGroup.GET("/act/statistic", UserActStatisticHandler)
 		userApiGroup.POST("/act/signin", UserActSigninHandler)
+		userApiGroup.POST("/act/cancel", UserActCancelHandler)
+		userApiGroup.POST("/act/upload", UserActUploadHandler)
 		userApiGroup.GET("/act/log", UserActLogHandler)
 		userApiGroup.GET("/act/query", UserActQueryHandler)
 		userApiGroup.GET("/noti/get", UserNotiGetHandler)
@@ -76,6 +79,7 @@ func init() {
 		adminApiGroup.POST("/act/new", adminActNewHandler)
 		adminApiGroup.GET("/act/list", adminActListHandler)
 		adminApiGroup.GET("/act/statistic", adminActStatisticHandler)
+		adminApiGroup.POST("/act/export", AdminActExportHandler)
 		adminApiGroup.GET("/class/info", adminClassInfoHandler)
 		adminApiGroup.POST("/class/edit", adminClassEditHandler)
 
@@ -86,16 +90,16 @@ func init() {
 	testGroup := router.Group("/test")
 	testGroup.Use(AdminMiddleware)
 	{
-		testGroup.GET("tpl",testTplHandler)
+		testGroup.GET("tpl", testTplHandler)
 	}
 
 	debugGroup := router.Group("/debug")
 	debugGroup.Use(AdminMiddleware)
 	{
 		//消息推送测试
-		debugGroup.GET("noti/act",testActNotiHandler)
-		debugGroup.GET("noti/normal",testNotiHandler)
+		debugGroup.GET("noti/act", testActNotiHandler)
+		debugGroup.GET("noti/normal", testNotiHandler)
 
-		debugGroup.GET("noti/send",testTplSendHandler)
+		debugGroup.GET("noti/send", testTplSendHandler)
 	}
 }

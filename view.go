@@ -10,8 +10,7 @@ import (
 	"strings"
 )
 
-
-func viewIndex(c *gin.Context)  {
+func viewIndex(c *gin.Context) {
 	authorizationMiddleware(c, 0)
 	_, err := getAuthFromContext(c)
 	if err != nil {
@@ -29,12 +28,11 @@ func viewReg(c *gin.Context) {
 		return
 	}
 	if auth.ClassId != 0 {
-		c.Redirect(302,"/#/error/"+url.QueryEscape("您无需再做账号初始化"))
+		c.Redirect(302, "/#/error/"+url.QueryEscape("您无需再做账号初始化"))
 		return
 	}
 	c.Data(200, ContentTypeHTML, views("reg"))
 }
-
 
 //模板加载函数
 func views(template string, params ...map[string]string) (html []byte) {
@@ -74,5 +72,5 @@ func versionHandler(c *gin.Context) {
 	res := new(resVersion)
 	res.Status = 0
 	res.Data.Version = BackEndVer
-	c.JSON(200,res)
+	c.JSON(200, res)
 }

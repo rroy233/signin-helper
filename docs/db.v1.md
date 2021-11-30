@@ -174,5 +174,42 @@ int
 
 
 
+## file 文件记录
+
+### file_id 主键
+### status 文件状态
+
+* -1:文件(远端)已删除
+* 0:暂存在本地
+* 1:保存在远端
+
+### user_id
+
+### act_id
+
+### file_name
+
+文件名称(不含后缀)
+
+### content_type
+
+文件类型
+
+### local
+
+本地地址
+
+`/storage/temp/xxx`
+
+### remote
+
+cos对象存储的key
+
+`/upload/xxx`
+
+### exp_time
+
+### upload_time
+
 
 

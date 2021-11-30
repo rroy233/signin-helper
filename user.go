@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	wx "github.com/wxpusher/wxpusher-sdk-go"
 	wxModel "github.com/wxpusher/wxpusher-sdk-go/model"
+	"os"
 	"signin/Logger"
 	"strconv"
 	"strings"
@@ -18,7 +19,12 @@ type FormDataUserInit struct {
 }
 
 type FormDataSignIn struct {
-	ActToken string `json:"act_token" binding:"required"`
+	ActToken    string `json:"act_token" binding:"required"`
+	UploadToken string `json:"upload_token"`
+}
+
+type FormDataCancel struct {
+	ActToken    string `json:"act_token" binding:"required"`
 }
 
 type FormDataUserNotiEdit struct {
@@ -28,6 +34,11 @@ type FormDataUserNotiEdit struct {
 type FormDataNotiCheck struct {
 	Token string `json:"token" binding:"required"`
 }
+
+const (
+	ACT_TYPE_NORMAL = iota
+	ACT_TYPE_UPLOAD
+)
 
 func initHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
@@ -239,7 +250,7 @@ func UserActInfoHandler(c *gin.Context) {
 		actItem.Statistic.Info = stsInfo
 
 		//存储actToken
-		actToken := MD5_short(auth.ID+fmt.Sprintf("%d",act.ActID))
+		actToken := MD5_short(auth.ID + fmt.Sprintf("%d", act.ActID))
 		rdb.Set(ctx, "SIGNIN_APP:actToken:"+actToken, strconv.FormatInt(int64(act.ActID), 10), 10*time.Minute)
 
 		actItem.ActToken = actToken
@@ -253,21 +264,48 @@ func UserActInfoHandler(c *gin.Context) {
 		}
 		actItem.BeginTime = ts2DateString(act.BeginTime)
 
+
+		//判断是否需要上传文件
+		actItem.ActType = act.Type
+
 		//结束时间描述
-		et,_ := strconv.ParseInt(act.EndTime,10,64)
+		et, _ := strconv.ParseInt(act.EndTime, 10, 64)
 		//tm次日凌晨时间
 		tm := time.Date(time.Now().Year(), time.Now().Month(), time.Now().Day(), 0, 0, 0, 0, TZ).AddDate(0, 0, 1)
 		if et < tm.Unix() {
 			//今天
 			actItem.EndTime = "今天" + time.Unix(et, 0).In(TZ).Format("15:04")
-		}else if et < tm.AddDate(0,0,1).Unix(){
+		} else if et < tm.AddDate(0, 0, 1).Unix() {
 			//明天
 			actItem.EndTime = "明天" + time.Unix(et, 0).In(TZ).Format("15:04")
-		}else if et < tm.AddDate(0,0,2).Unix(){
+		} else if et < tm.AddDate(0, 0, 2).Unix() {
 			//后天
 			actItem.EndTime = "后天" + time.Unix(et, 0).In(TZ).Format("15:04")
-		}else{
+		} else {
 			actItem.EndTime = ts2DateString(act.EndTime)
+		}
+
+		//文件上传要求
+		if act.Type == ACT_TYPE_UPLOAD{
+			opts := new(FileOptions)
+			err = json.Unmarshal([]byte(act.FileOpts),opts)
+			if err != nil {
+				Logger.Error.Println("[个人信息查询]FileOpts解析失败:", err)
+				returnErrorJson(c, "FileOpts解析失败")
+				return
+			}
+			actItem.FileOptions.MaxSize = fmt.Sprintf("%d MB",opts.MaxSize)
+			for i:=range opts.AllowContentType{
+				if i != 0{
+					actItem.FileOptions.AllowExt +=","
+				}
+				actItem.FileOptions.AllowExt += fmt.Sprintf("【%s】",fileExt[opts.AllowContentType[i]])
+			}
+			if opts.Rename == false{
+				actItem.FileOptions.Note = "请按照要求命名文件"
+			}else{
+				actItem.FileOptions.Note = "无"
+			}
 		}
 
 		//查询是否已参与
@@ -337,6 +375,164 @@ func UserActStatisticHandler(c *gin.Context) {
 	c.JSON(200, res)
 }
 
+func UserActUploadHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	actToken := c.Query("act_token")
+	if actToken == "" {
+		returnErrorJson(c, "参数丢失")
+		return
+	}
+
+	//查询正在生效的活动id
+	ActiveActIDs, err := getActIDs(auth.ClassId)
+	if err != nil {
+		Logger.Error.Println("[签到]活动id查找失败", err, auth)
+		returnErrorJson(c, "系统异常(-1)")
+		return
+	}
+
+	//从redis查找活动id
+	actID, err := queryActIdByActToken(actToken)
+	if err != nil {
+		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
+		returnErrorJson(c, "参数无效(-2)")
+		return
+	}
+
+	//判断是否正在生效
+	if existIn(ActiveActIDs, actID) == false {
+		Logger.Info.Println("[签到]从redis查找活动，活动已失效", auth)
+		returnErrorJson(c, "当前活动已过期")
+		return
+	}
+
+	tmp := 0
+	_ = db.Get(&tmp, "select `file_id` from `signin_log` where `user_id`=? and `act_id`=?",
+		auth.UserID,
+		actID)
+	if tmp > 0 {
+		Logger.Info.Println("[签到]重复参与", err, auth)
+		returnErrorJson(c, "")
+		return
+	}
+
+	act,err := getAct(actID)
+	if err != nil {
+		Logger.Error.Println("[签到]查询活动信息失败", err)
+		returnErrorJson(c, "查询活动信息失败")
+		return
+	}
+
+	file, _ := c.FormFile("file")
+
+
+	//获取活动对文件的要求
+	if act.FileOpts == ""{
+		Logger.Error.Println("[签到]管理员配置文件上传要求错误")
+		returnErrorJson(c, "管理员配置文件上传要求错误")
+		return
+	}
+	opts := new(FileOptions)
+	err = json.Unmarshal([]byte(act.FileOpts),opts)
+	if err != nil {
+		Logger.Error.Println("[签到]解码活动对文件的要求失败",err)
+		returnErrorJson(c, "解码活动对文件的要求失败")
+		return
+	}
+	ext := ""
+	for i:= range opts.AllowContentType{
+		if opts.AllowContentType[i] == file.Header.Values("Content-Type")[0]{
+			ext = fileExt[file.Header.Values("Content-Type")[0]]
+		}
+	}
+	if ext == "" {
+		returnErrorJson(c, "此活动不支持该文件格式")
+		return
+	}
+
+	//文件大小
+	sizeLimit := int64(opts.MaxSize << 20)
+	if file.Size > sizeLimit{
+		returnErrorJson(c, "文件大小超过规定值")
+		return
+	}
+
+	//文件名安全检查
+	if strings.Contains(file.Filename, "..") {
+		returnErrorJson(c, "文件名无效")
+		return
+	}
+	fileNameEncoded := fmt.Sprintf("Act%d_User%d_%s", actID, auth.UserID,fmt.Sprintf("%d", time.Now().Unix()))
+	err = c.SaveUploadedFile(file, "./storage/upload/"+fmt.Sprintf("%s%s",fileNameEncoded,ext))
+	if err != nil {
+		returnErrorJson(c, err.Error())
+		return
+	}
+	Logger.Info.Printf("[文件上传]UID:%d，上传文件%s",auth.UserID,fmt.Sprintf("%s%s",fileNameEncoded,ext))
+
+	fileDB := new(dbFile)
+	fileDB.Status = FILE_STATUS_REMOTE
+	fileDB.UserID = auth.UserID
+	fileDB.ActID = actID
+	if opts.Rename == true{
+		fileDB.FileName = auth.Name
+	}else{
+		fileDB.FileName = strings.Split(file.Filename,".")[0]
+	}
+	fileDB.ContentType = file.Header.Values("Content-Type")[0]
+	fileDB.Local = ""
+
+	objKey,err := cosUpload( "./storage/upload/"+fmt.Sprintf("%s%s",fileNameEncoded,ext),fmt.Sprintf("%s%s",fileNameEncoded,ext))
+	if err != nil {
+		Logger.Error.Println("[签到]文件上传cos失败:",err)
+		returnErrorJson(c,"文件上传失败，请重试！")
+	}
+
+	fileDB.Remote = objKey
+	fileDB.ExpTime = strconv.FormatInt(time.Now().AddDate(0,1,0).Unix(),10)
+	fileDB.UploadTime = strconv.FormatInt(time.Now().Unix(),10)
+
+	dbRes,err := db.Exec("INSERT INTO `file` (`file_id`, `status`, `user_id`, `act_id`, `file_name`, `content_type`, `local`, `remote`, `exp_time`, `upload_time`) VALUES (NULL,?, ?, ?, ?, ?, ?, ?, ?, ?);",
+		fileDB.Status,
+		fileDB.UserID,
+		fileDB.ActID,
+		fileDB.FileName,
+		fileDB.ContentType,
+		fileDB.Local,
+		fileDB.Remote,
+		fileDB.ExpTime,
+		fileDB.UploadTime,
+	)
+	if err != nil {
+		Logger.Error.Println("[签到]文件登记失败:",err)
+		returnErrorJson(c,"文件登记失败，请联系管理员！")
+	}
+
+	//删除文件
+	defer func() {
+		err:=os.Remove("./storage/upload/"+fmt.Sprintf("%s%s",fileNameEncoded,ext))
+		if err != nil{
+			Logger.Error.Printf("[文件上传]文件%s删除失败！！！",auth.UserID,fmt.Sprintf("%s%s",fileNameEncoded,ext))
+		}
+	}()
+
+	//存储redis
+	fileId,_ := dbRes.LastInsertId()
+	uploadToken := MD5_short(fmt.Sprintf("%d%d%d",time.Now().UnixNano(),auth.UserID,actID))
+	rdb.Set(ctx,"SIGNIN_APP:UserSignUpload:"+uploadToken,fileId,-1)
+
+	res := new(ResUserUpload)
+	res.Status = 0
+	res.Msg = "成功"
+	res.Data.UploadToken = uploadToken
+	c.JSON(200, res)
+}
+
 func UserActSigninHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {
@@ -351,7 +547,6 @@ func UserActSigninHandler(c *gin.Context) {
 		returnErrorJson(c, "参数无效(-1)")
 		return
 	}
-
 	//查询正在生效的活动id
 	ActiveActIDs, err := getActIDs(auth.ClassId)
 	if err != nil {
@@ -394,12 +589,23 @@ func UserActSigninHandler(c *gin.Context) {
 		return
 	}
 
+	//判断是否上传文件
+	fileID := -1
+	if act.Type == ACT_TYPE_UPLOAD {
+		fileID,_ = strconv.Atoi(rdb.Get(ctx,"SIGNIN_APP:UserSignUpload:"+form.UploadToken).Val())
+		if fileID <= 0 {
+			returnErrorJson(c, "您尚未完成文件上传")
+			return
+		}
+	}
+
 	//写入log表
-	_, err = db.Exec("INSERT INTO `signin_log` (`log_id`, `class_id`, `act_id`, `user_id`, `create_time`) VALUES (NULL, ?, ?, ?, ?);",
+	_, err = db.Exec("INSERT INTO `signin_log` (`log_id`, `class_id`, `act_id`, `user_id`, `create_time`,`file_id`) VALUES (NULL, ?, ?, ?, ?,?);",
 		auth.ClassId,
 		actID,
 		auth.UserID,
-		strconv.FormatInt(time.Now().Unix(), 10))
+		strconv.FormatInt(time.Now().Unix(), 10),
+		fileID)
 	if err != nil {
 		Logger.Info.Println("[签到]写入log表失败", err, auth)
 		returnErrorJson(c, "系统异常，请联系管理员")
@@ -407,18 +613,18 @@ func UserActSigninHandler(c *gin.Context) {
 	}
 
 	//检查提醒次数，判断是否需要推送提醒
-	notiTimes,err := actNotiUserTimesGet(act,auth.UserID)
+	notiTimes, err := actNotiUserTimesGet(act, auth.UserID)
 	if err == nil {
 		//成功获取
-		if notiTimes > 6{
-			noti,err := makeActInnerNoti(actID,auth.UserID,ACT_NOTI_TYPE_CH_NOTI)
-			err = pushInnerNoti(auth.UserID,noti)
+		if notiTimes > 6 {
+			noti, err := makeActInnerNoti(actID, auth.UserID, ACT_NOTI_TYPE_CH_NOTI)
+			err = pushInnerNoti(auth.UserID, noti)
 			if err != nil {
-				Logger.Error.Println("[签到][检查提醒次数]推送消息失败:",err)
-			}else{
-				err=actNotiUserTimesDel(act,auth.UserID)
+				Logger.Error.Println("[签到][检查提醒次数]推送消息失败:", err)
+			} else {
+				err = actNotiUserTimesDel(act, auth.UserID)
 				if err != nil {
-					Logger.Error.Println("[签到][检查提醒次数]删除提醒次数失败:",err)
+					Logger.Error.Println("[签到][检查提醒次数]删除提醒次数失败:", err)
 				}
 			}
 		}
@@ -553,7 +759,7 @@ func UserActLogHandler(c *gin.Context) {
 			})
 		} else {
 			//存储actToken
-			actToken := MD5_short(auth.ID+fmt.Sprintf("%d",act.ActID))
+			actToken := MD5_short(auth.ID + fmt.Sprintf("%d", act.ActID))
 			rdb.Set(ctx, "SIGNIN_APP:actToken:"+actToken, strconv.FormatInt(int64(logs[i].ActID), 10), 10*time.Minute)
 			res.Data.List = append(res.Data.List, resActLogItem{
 				Id:       id,
@@ -709,7 +915,6 @@ func UserWechatBindHandler(c *gin.Context) {
 	return
 }
 
-
 func UserNotiCheckHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {
@@ -720,23 +925,23 @@ func UserNotiCheckHandler(c *gin.Context) {
 	form := new(FormDataNotiCheck)
 	err = c.ShouldBindJSON(form)
 	if err != nil {
-		Logger.Info.Println("[用户信息已读]解析参数错误:",err,auth)
-		returnErrorJson(c,"参数无效(-1)")
+		Logger.Info.Println("[用户信息已读]解析参数错误:", err, auth)
+		returnErrorJson(c, "参数无效(-1)")
 		return
 	}
 
-	noti,err := rdb.Exists(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+form.Token).Result()
-	if noti != int64(1) || err != nil{
-		Logger.Info.Println("[用户信息已读]参数无效:",err,auth)
-		returnErrorJson(c,"参数无效(-2)")
+	noti, err := rdb.Exists(ctx, "SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+form.Token).Result()
+	if noti != int64(1) || err != nil {
+		Logger.Info.Println("[用户信息已读]参数无效:", err, auth)
+		returnErrorJson(c, "参数无效(-2)")
 		return
 	}
 
-	rdb.Del(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+form.Token)
+	rdb.Del(ctx, "SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+form.Token)
 
 	res := new(ResEmpty)
 	res.Status = 0
-	c.JSON(200,res)
+	c.JSON(200, res)
 	return
 }
 
@@ -748,31 +953,129 @@ func UserNotiFetchHandler(c *gin.Context) {
 	}
 
 	//SIGNIN_APP:UserNoti:USER_{{USER_ID}}:{{noti_token}}
-	keys := rdb.Keys(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":*").Val()
-	if len(keys) == 0{
+	keys := rdb.Keys(ctx, "SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":*").Val()
+	if len(keys) == 0 {
 		res := new(ResEmpty)
 		res.Status = 0
-		c.JSON(200,res)
+		c.JSON(200, res)
 		return
 	}
 
 	res := new(ResUserNotiFetch)
 	res.Status = 0
-	res.Data = make([]*UserNotiFetchItem,0)
-	for i:= range keys {
-		key := strings.Split(keys[i],":")
-		if len(key) != 4{
-			Logger.Error.Println("[拉取用户消息]keys异常:",key)
+	res.Data = make([]*UserNotiFetchItem, 0)
+	for i := range keys {
+		key := strings.Split(keys[i], ":")
+		if len(key) != 4 {
+			Logger.Error.Println("[拉取用户消息]keys异常:", key)
 			continue
 		}
 		item := new(UserNotiFetchItem)
-		err = json.Unmarshal([]byte(rdb.Get(ctx,"SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+key[3]).Val()),item)
+		err = json.Unmarshal([]byte(rdb.Get(ctx, "SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":"+key[3]).Val()), item)
 		if err != nil {
-			Logger.Error.Println("[拉取用户消息]json反序列化失败:",err,key)
+			Logger.Error.Println("[拉取用户消息]json反序列化失败:", err, key)
 			continue
 		}
-		res.Data = append(res.Data,item)
+		res.Data = append(res.Data, item)
 	}
 
+	c.JSON(200, res)
+}
+
+func UserActCancelHandler(c *gin.Context){
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	form := new(FormDataCancel)
+	err = c.ShouldBindJSON(form)
+	if err != nil {
+		Logger.Info.Println("[取消签到]json绑定失败", err, auth)
+		returnErrorJson(c, "参数无效(-1)")
+		return
+	}
+	//查询正在生效的活动id
+	ActiveActIDs, err := getActIDs(auth.ClassId)
+	if err != nil {
+		Logger.Error.Println("[取消签到]活动id查找失败", err, auth)
+		returnErrorJson(c, "系统异常(-1)")
+		return
+	}
+
+	//从redis查找活动id
+	actID, err := queryActIdByActToken(form.ActToken)
+	if err != nil {
+		Logger.Info.Println("[取消签到]从redis查找活动id失败", err, auth)
+		returnErrorJson(c, "参数无效(-2)")
+		return
+	}
+
+	//判断是否正在生效
+	if existIn(ActiveActIDs, actID) == false {
+		Logger.Info.Println("[取消签到]从redis查找活动，活动已失效", auth)
+		returnErrorJson(c, "当前活动已过期")
+		return
+	}
+
+	//查询是否已参与
+	log := new(dbLog)
+	err = db.Get(log, "select * from `signin_log` where `user_id`=? and `act_id`=?",
+		auth.UserID,
+		actID)
+	if err != nil || log == nil{
+		Logger.Error.Println("[取消签到]查询是否已参与", err,log ,auth)
+		returnErrorJson(c, "查询签到记录失败")
+		return
+	}
+
+	if log.FileID >= 1 {
+		//获取文件
+		file := new(dbFile)
+		err = db.Get(file, "select * from `file` where `file_id`=?",
+			log.FileID)
+		if err != nil || file == nil{
+			Logger.Error.Println("[取消签到]获取文件失败", err,log ,auth)
+			returnErrorJson(c, "查询签到记录失败(-1)")
+			return
+		}
+
+		//删除cos文件
+		err = cosFileDel(file.Remote)
+		if err != nil {
+			Logger.Info.Println("[取消签到]删除远端文件失败", err)
+		}
+
+		//更新file
+		file.Status = FILE_STATUS_DELETED
+		file.UploadTime = fmt.Sprintf("%d",time.Now().Unix())
+		_,err = db.Exec("update `file` set `status`=?,`upload_time`=? where `file_id`=?;",
+			file.Status,
+			file.UploadTime,
+			file.FileID,
+		)
+		if err != nil {
+			Logger.Error.Println("[取消签到]更新file失败", err, auth)
+			returnErrorJson(c, "取消失败(-1)")
+			return
+		}
+	}
+
+	//更新signin_log
+	_,err = db.Exec("DELETE FROM `signin_log` WHERE `signin_log`.`log_id` = ?;",
+		log.LogID,
+	)
+	if err != nil {
+		Logger.Error.Println("[取消签到]更新signin_log失败", err, auth)
+		returnErrorJson(c, "取消失败(-2)")
+		return
+	}
+
+	res := new(ResEmpty)
+	res.Status = 0
+	res.Msg = "取消成功"
+
 	c.JSON(200,res)
+
 }

@@ -73,7 +73,7 @@ func generateJwt(user *dbUser, JwtID string, expTime time.Duration) (s string, e
 	}
 
 	//存redis
-	rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:%s",user.UserID,JwtID), user.UserID, expTime)
+	rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:%s", user.UserID, JwtID), user.UserID, expTime)
 
 	return s, nil
 }
@@ -92,7 +92,7 @@ func verifyJWTSigning(tokenString string, checkRedis bool) (auth *JWTStruct, err
 			return []byte(config.General.JwtKey), nil
 		})
 		if claims, ok := t.Claims.(*JWTStruct); ok && token.Valid {
-			uid := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:%s",claims.UserID,claims.ID)).Val()
+			uid := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:%s", claims.UserID, claims.ID)).Val()
 			if uid != strconv.FormatInt(int64(claims.UserID), 10) {
 				err = errors.New("JWT已失效")
 				return nil, err
@@ -111,13 +111,13 @@ func ssoCallBackHandler(c *gin.Context) {
 	state := c.Query("state")
 
 	if accessToken == "" || state == "" {
-		returnErrorView(c,"参数无效(-1)(state无效)")
+		returnErrorView(c, "参数无效(-1)(state无效)")
 		return
 	}
 
 	redirectUrl := rdb.Get(ctx, "SIGNIN_APP:state:"+state).Val()
 	if redirectUrl == "" {
-		returnErrorView(c,"参数无效(-2)")
+		returnErrorView(c, "参数无效(-2)")
 		return
 	}
 	if redirectUrl == "null" {
@@ -126,7 +126,7 @@ func ssoCallBackHandler(c *gin.Context) {
 
 	userInfo, err := ssoClient.GetUserInfo(accessToken)
 	if err != nil {
-		returnErrorView(c,"登录失败:Failed To Get UserInfo!")
+		returnErrorView(c, "登录失败:Failed To Get UserInfo!")
 		return
 	}
 
@@ -151,7 +151,7 @@ func ssoCallBackHandler(c *gin.Context) {
 		uid, err := createUser(userForm)
 		if err != nil {
 			Logger.Error.Println("[创建用户]失败:", err)
-			returnErrorView(c,"系统异常(-1)")
+			returnErrorView(c, "系统异常(-1)")
 			return
 		}
 		//签发临时JWT
@@ -160,7 +160,7 @@ func ssoCallBackHandler(c *gin.Context) {
 		token, err := generateJwt(userForm, JID, 10*time.Minute)
 		if err != nil {
 			Logger.Error.Println("[签发临时JWT]失败:", err)
-			returnErrorView(c,"系统异常(-2)")
+			returnErrorView(c, "系统异常(-2)")
 			return
 		}
 
@@ -186,10 +186,10 @@ func ssoCallBackHandler(c *gin.Context) {
 	}
 	storeToken(c, token) //存入cookie
 
-	_,err = csrfMake(jID,c)
+	_, err = csrfMake(jID, c)
 	if err != nil {
-		Logger.Info.Println("[用户csrf]发生错误",err)
-		returnErrorView(c,"返回csrfToken失败")
+		Logger.Info.Println("[用户csrf]发生错误", err)
+		returnErrorView(c, "返回csrfToken失败")
 		return
 	}
 
@@ -199,11 +199,11 @@ func ssoCallBackHandler(c *gin.Context) {
 
 //吊销jwt
 func killJwtByJID(jID string) error {
-	keys := rdb.Keys(ctx,"*:"+jID).Val()
-	if len(keys)==0{
+	keys := rdb.Keys(ctx, "*:"+jID).Val()
+	if len(keys) == 0 {
 		return errors.New("jwt不存在")
 	}
-	if strings.Contains(keys[0],"SIGNIN_APP") == false{
+	if strings.Contains(keys[0], "SIGNIN_APP") == false {
 		return errors.New("jwt不存在，前缀不匹配")
 	}
 	return doKillJWT(keys[0])
@@ -221,14 +221,14 @@ func doKillJWT(JwtKey string) error {
 	return nil
 }
 
-func killJwtByUID(UID int)  {
-	keys := rdb.Keys(ctx,fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:*",UID)).Val()
-	if len(keys)==0{
+func killJwtByUID(UID int) {
+	keys := rdb.Keys(ctx, fmt.Sprintf("SIGNIN_APP:JWT:USER_%d:*", UID)).Val()
+	if len(keys) == 0 {
 		return
 	}
-	for i:= range keys{
-		if err := doKillJWT(keys[i]);err!=nil{
-			Logger.Error.Println("[killJwtByUID]发生错误:",err,keys[i])
+	for i := range keys {
+		if err := doKillJWT(keys[i]); err != nil {
+			Logger.Error.Println("[killJwtByUID]发生错误:", err, keys[i])
 		}
 	}
 	return
@@ -237,22 +237,22 @@ func killJwtByUID(UID int)  {
 func loginHandler(c *gin.Context) {
 	token := c.Query("jwt")
 	if token == "" {
-		returnErrorView(c,"参数无效(-1)")
+		returnErrorView(c, "参数无效(-1)")
 		return
 	}
 
 	auth, err := verifyJWTSigning(token, true)
 	if err != nil {
-		Logger.Info.Printf("[login]token:%s,error:%s",token,err.Error())
-		returnErrorView(c,"token无效或已过期")
+		Logger.Info.Printf("[login]token:%s,error:%s", token, err.Error())
+		returnErrorView(c, "token无效或已过期")
 		return
 	}
 	storeToken(c, token)
 
-	_,err = csrfMake(auth.ID,c)
+	_, err = csrfMake(auth.ID, c)
 	if err != nil {
-		Logger.Info.Println("[用户csrf]发生错误",err)
-		returnErrorView(c,"返回csrfToken失败")
+		Logger.Info.Println("[用户csrf]发生错误", err)
+		returnErrorView(c, "返回csrfToken失败")
 		return
 	}
 
@@ -320,7 +320,7 @@ func wxpusherCallbackHandler(c *gin.Context) {
 	}
 
 	//存储
-	_, err = db.Exec("update `user` set `wx_pusher_uid`=? , `notification_type`=? where `user_id`=?", wxUserid,NOTIFICATION_TYPE_WECHAT, userID)
+	_, err = db.Exec("update `user` set `wx_pusher_uid`=? , `notification_type`=? where `user_id`=?", wxUserid, NOTIFICATION_TYPE_WECHAT, userID)
 	if err != nil {
 		Logger.Error.Println("[微信扫码回调]存储mysql失败:", err)
 		c.Status(400)
