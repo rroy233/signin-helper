@@ -29,3 +29,9 @@ mail:
 
 wx_pusher:
   app_token: ""
+
+cos:
+  bucket_url: ""
+  base_path: ""
+  secret_id: ""
+  secret_key: ""
