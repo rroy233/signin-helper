@@ -32,18 +32,21 @@ type dbClass struct {
 }
 
 type dbAct struct {
-	ActID        int    `db:"act_id" json:"act_id"`
-	ClassID      int    `db:"class_id" json:"class_id"`
-	Active       int    `json:"active" db:"active"`
-	Name         string `db:"name" json:"name"`
-	Announcement string `db:"announcement" json:"announcement"`
-	CheerText    string `db:"cheer_text" json:"cheer_text"`
-	Pic          string `json:"pic" db:"pic"`
-	BeginTime    string `db:"begin_time" json:"begin_time"`
-	EndTime      string `db:"end_time" json:"end_time"`
-	CreateTime   string `db:"create_time" json:"create_time"`
-	UpdateTime   string `db:"update_time" json:"update_time"`
-	CreateBy     int    `db:"create_by" json:"create_by"`
+	ActID            int    `db:"act_id" json:"act_id"`
+	ClassID          int    `db:"class_id" json:"class_id"`
+	Active           int    `json:"active" db:"active"`
+	Type             int    `json:"type" db:"type"`
+	Name             string `db:"name" json:"name"`
+	Announcement     string `db:"announcement" json:"announcement"`
+	CheerText        string `db:"cheer_text" json:"cheer_text"`
+	Pic              string `json:"pic" db:"pic"`
+	DailyNotiEnabled int    `json:"daily_noti_enabled" db:"daily_noti_enabled"`
+	BeginTime        string `db:"begin_time" json:"begin_time"`
+	EndTime          string `db:"end_time" json:"end_time"`
+	CreateTime       string `db:"create_time" json:"create_time"`
+	UpdateTime       string `db:"update_time" json:"update_time"`
+	CreateBy         int    `db:"create_by" json:"create_by"`
+	FileOpts         string `json:"file_opts" db:"file_opts"`
 }
 
 type dbLog struct {
@@ -52,16 +55,36 @@ type dbLog struct {
 	ActID      int    `json:"act_id" db:"act_id"`
 	UserID     int    `json:"user_id" db:"user_id"`
 	CreateTime string `json:"create_time" db:"create_time"`
+	FileID     int    `json:"file_id" db:"file_id"`
 }
 
 type dbTplItem struct {
-	TplID int `db:"tpl_id" json:"tpl_id"`
-	MsgType int `json:"msg_type" db:"msg_type"`
-	Level int `json:"level" db:"level"`
-	Title string `db:"title" json:"title"`
-	Body  string `db:"body" json:"body"`
-	Enabled int `json:"enabled" db:"enabled"`
+	TplID   int    `db:"tpl_id" json:"tpl_id"`
+	MsgType int    `json:"msg_type" db:"msg_type"`
+	Level   int    `json:"level" db:"level"`
+	Title   string `db:"title" json:"title"`
+	Body    string `db:"body" json:"body"`
+	Enabled int    `json:"enabled" db:"enabled"`
 }
+
+type dbFile struct {
+	FileID      int    `json:"file_id" db:"file_id"`
+	Status      int    `json:"status" db:"status"`
+	UserID      int    `json:"user_id" db:"user_id"`
+	ActID       int    `json:"act_id" db:"act_id"`
+	FileName    string `json:"file_name" db:"file_name"`
+	ContentType string `json:"content_type" db:"content_type"`
+	Local       string `json:"local" db:"local"`
+	Remote      string `json:"remote" db:"remote"`
+	ExpTime     string `json:"exp_time" db:"exp_time"`
+	UploadTime  string `json:"upload_time" db:"upload_time"`
+}
+
+const (
+	FILE_STATUS_DELETED = -1
+	FILE_STATUS_LOCAL   = 0
+	FILE_STATUS_REMOTE  = 1
+)
 
 const (
 	NOTIFICATION_TYPE_NONE = iota

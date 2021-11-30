@@ -30,6 +30,9 @@ func main() {
 	//启动定时任务
 	initJob()
 
+	//初始化cos
+	cosClientUpdate()
+
 	ssoClient = sso.NewClient(config.General.Production, config.SSO.ServiceName, config.SSO.ClientId, config.SSO.ClientSecret)
 
 	err := router.Run(":" + config.General.ListenPort)

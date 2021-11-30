@@ -118,11 +118,11 @@ func ActEndingBulkSend(classID int, act *dbAct) error {
 	title := "<提醒>「" + act.Name + "」参与率未达标"
 	timeHour := time.Now().Format("15")
 	body := ""
-	if timeHour == "12"{
+	if timeHour == "12" {
 		body = "管理员{{username}}您好:{{EOL}}{{space}}{{space}}感谢您使用本系统。{{EOL}}{{space}}{{space}}活动「{{act_name}}」将于今天下午6:30之前结束，此时活动参与率并未达到100%，详细情况请点击链接进入系统查看。{{EOL}}{{EOL}}快捷入口：{{login_url_withToken}}"
-	}else if timeHour == "18"{
+	} else if timeHour == "18" {
 		body = "管理员{{username}}您好:{{EOL}}{{space}}{{space}}感谢您使用本系统。{{EOL}}{{space}}{{space}}活动「{{act_name}}」将于明天中午12:30之前结束，此时活动参与率并未达到100%，详细情况请点击链接进入系统查看。{{EOL}}{{EOL}}快捷入口：{{login_url_withToken}}"
-	}else{
+	} else {
 		return errors.New("时间不是规定值")
 	}
 
@@ -220,7 +220,7 @@ func wechatSender(queue chan *NotifyJob) {
 			Logger.Error.Println("[微信推送]", sendConfig, "请求api失败", err)
 			break
 		}
-		Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功",resp)
+		Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功", resp)
 	}
 }
 
@@ -239,7 +239,7 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 		s = strings.Replace(s, "{{act_name}}", act.Name, -1)
 		s = strings.Replace(s, "{{act_begin_time}}", ts2DateString(act.BeginTime), -1)
 		s = strings.Replace(s, "{{act_end_time}}", ts2DateString(act.EndTime), -1)
-		if strings.Contains(s,"{{act_creator}}") == true{
+		if strings.Contains(s, "{{act_creator}}") == true {
 			s = strings.Replace(s, "{{act_creator}}", queryUserName(act.CreateBy), -1)
 		}
 	}
@@ -309,20 +309,20 @@ func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct, ta
 }
 
 //推送站内信息
-func pushInnerNoti(userID int,notiItem *UserNotiFetchItem) error {
+func pushInnerNoti(userID int, notiItem *UserNotiFetchItem) error {
 	if notiItem == nil {
 		return errors.New("notiItem为空")
 	}
-	data,err := json.Marshal(notiItem)
+	data, err := json.Marshal(notiItem)
 	if err != nil {
 		return err
 	}
-	err = rdb.SetNX(ctx,fmt.Sprintf("SIGNIN_APP:UserNoti:USER_%d:%s",userID,notiItem.Token),data,-1).Err()
+	err = rdb.SetNX(ctx, fmt.Sprintf("SIGNIN_APP:UserNoti:USER_%d:%s", userID, notiItem.Token), data, -1).Err()
 	return err
 }
 
-func makeActInnerNoti(actID int,userID int,actNotiType string) (*UserNotiFetchItem,error) {
-	token := MD5_short(fmt.Sprintf("%d%d%s",userID,actID,actNotiType))
+func makeActInnerNoti(actID int, userID int, actNotiType string) (*UserNotiFetchItem, error) {
+	token := MD5_short(fmt.Sprintf("%d%d%s", userID, actID, actNotiType))
 	item := new(UserNotiFetchItem)
 	item.Token = token
 
@@ -334,33 +334,33 @@ func makeActInnerNoti(actID int,userID int,actNotiType string) (*UserNotiFetchIt
 		item.Type = "warning"
 		item.Text = "请您及时完成任务并进行签到"
 	default:
-		return nil,errors.New("actNotiType无效")
+		return nil, errors.New("actNotiType无效")
 	}
-	data,err := json.Marshal(item)
+	data, err := json.Marshal(item)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	err = rdb.SetNX(ctx,"SIGNIN_APP:UserNoti:USER_"+fmt.Sprintf("%d",userID)+":"+token,string(data),-1).Err()
+	err = rdb.SetNX(ctx, "SIGNIN_APP:UserNoti:USER_"+fmt.Sprintf("%d", userID)+":"+token, string(data), -1).Err()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	return item,nil
+	return item, nil
 }
 
-func makeInnerNoti(userID int) (*UserNotiFetchItem,error) {
+func makeInnerNoti(userID int) (*UserNotiFetchItem, error) {
 	rand.Seed(time.Now().UnixNano())
-	token := MD5_short(fmt.Sprintf("%d%d%d",userID,time.Now().UnixNano(),rand.Intn(999)))
+	token := MD5_short(fmt.Sprintf("%d%d%d", userID, time.Now().UnixNano(), rand.Intn(999)))
 	item := new(UserNotiFetchItem)
 	item.Token = token
 	item.Type = "info"
-	item.Text = "测试信息"+time.Now().Format("2006-01-02 15:04:05")
-	data,err := json.Marshal(item)
+	item.Text = "测试信息" + time.Now().Format("2006-01-02 15:04:05")
+	data, err := json.Marshal(item)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	err = rdb.SetNX(ctx,"SIGNIN_APP:UserNoti:USER_"+fmt.Sprintf("%d",userID)+":"+token,string(data),-1).Err()
+	err = rdb.SetNX(ctx, "SIGNIN_APP:UserNoti:USER_"+fmt.Sprintf("%d", userID)+":"+token, string(data), -1).Err()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	return item,nil
+	return item, nil
 }

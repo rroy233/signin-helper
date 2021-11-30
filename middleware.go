@@ -24,15 +24,15 @@ func AdminMiddleware(c *gin.Context) {
 func authorizationMiddleware(c *gin.Context, isAdmin int) {
 	token := ""
 	tokenHeader := c.GetHeader("Authorization")
-	tokenCookie := getCookie(c,"token")
-	if tokenHeader == "" && tokenCookie == ""{
+	tokenCookie := getCookie(c, "token")
+	if tokenHeader == "" && tokenCookie == "" {
 		middleWareRedirect(c)
 		c.Abort()
 		return
-	}else{
-		if tokenCookie != ""{
+	} else {
+		if tokenCookie != "" {
 			token = tokenCookie
-		}else{
+		} else {
 			token = tokenHeader
 		}
 	}
@@ -50,17 +50,17 @@ func authorizationMiddleware(c *gin.Context, isAdmin int) {
 		return
 	}
 	if isAdmin == 1 && auth.IsAdmin != 1 {
-		returnErrorView(c,"您无权限访问")
+		returnErrorView(c, "您无权限访问")
 		c.Abort()
 		return
 	}
 
 	//POST验证header:csrf
 	if c.Request.Method == "POST" {
-		err = csrfVerify(c.GetHeader("X-CSRF-TOKEN"),auth)
+		err = csrfVerify(c.GetHeader("X-CSRF-TOKEN"), auth)
 		if err != nil {
-			Logger.Info.Printf("[中间件]csrf验证失败 err:%s,auth=%v",err.Error(),auth)
-			returnErrorJson(c,"CSRF-TOKEN Mismatch")
+			Logger.Info.Printf("[中间件]csrf验证失败 err:%s,auth=%v", err.Error(), auth)
+			returnErrorJson(c, "CSRF-TOKEN Mismatch")
 			c.Abort()
 			return
 		}
@@ -70,21 +70,21 @@ func authorizationMiddleware(c *gin.Context, isAdmin int) {
 	c.Next()
 }
 
-func securityMiddleware(c *gin.Context)  {
-	c.Header("X-Content-Type-Options","nosniff")
+func securityMiddleware(c *gin.Context) {
+	c.Header("X-Content-Type-Options", "nosniff")
 
 	//跨站
-	c.Header("Access-Control-Allow-Origin","*")
-	c.Header("Access-Control-Allow-Headers","Authorization,X-CSRF-TOKEN")
-	
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Headers", "Authorization,X-CSRF-TOKEN")
+
 	//xss
-	c.Header("X-XSS-Protection","1; mode=block;")
+	c.Header("X-XSS-Protection", "1; mode=block;")
 
 }
 
 func middleWareRedirect(c *gin.Context) {
 	if strings.Contains(c.FullPath(), "/api/") == true {
-		returnErrorJson(c,"未授权访问")
+		returnErrorJson(c, "未授权访问")
 	} else {
 		c.Redirect(302, "/sso?redirect="+url.PathEscape(c.FullPath()))
 	}
@@ -100,36 +100,36 @@ func redirectToLogin(c *gin.Context) {
 }
 
 //生成csrfToken
-func csrfMake(jwtID string,c *gin.Context) (r string,err error) {
-	tmp := rdb.Get(ctx,"SIGNIN_APP:csrfToken:"+jwtID).Val()
-	if tmp == ""{
-		r = hex.EncodeToString(Sha256([]byte(jwtID+strconv.FormatInt(time.Now().UnixNano(),10)+strconv.FormatInt(int64(rand.Intn(99)),10))))
-		err = rdb.Set(ctx,"SIGNIN_APP:csrfToken:"+jwtID,r,1*time.Hour).Err()
+func csrfMake(jwtID string, c *gin.Context) (r string, err error) {
+	tmp := rdb.Get(ctx, "SIGNIN_APP:csrfToken:"+jwtID).Val()
+	if tmp == "" {
+		r = hex.EncodeToString(Sha256([]byte(jwtID + strconv.FormatInt(time.Now().UnixNano(), 10) + strconv.FormatInt(int64(rand.Intn(99)), 10))))
+		err = rdb.Set(ctx, "SIGNIN_APP:csrfToken:"+jwtID, r, 1*time.Hour).Err()
 		if err != nil {
 			return "", err
 		}
-	}else{
+	} else {
 		r = tmp
 	}
-	csrfSetCookie(c,r)
+	csrfSetCookie(c, r)
 	return r, err
 }
 
 // Sha256 sha256散列原始值
-func Sha256(data []byte)[]byte{
-	digest:=sha256.New()
+func Sha256(data []byte) []byte {
+	digest := sha256.New()
 	digest.Write(data)
 	return digest.Sum(nil)
 }
 
 //验证csrfToken
-func csrfVerify(token string,auth *JWTStruct) (err error) {
+func csrfVerify(token string, auth *JWTStruct) (err error) {
 	if auth.ClassId == 0 {
 		//未初始化
 		return nil
 	}
 	val := ""
-	val,err = rdb.Get(ctx,"SIGNIN_APP:csrfToken:"+auth.ID).Result()
+	val, err = rdb.Get(ctx, "SIGNIN_APP:csrfToken:"+auth.ID).Result()
 	if val != token {
 		return errors.New("CSRF-TOKEN Mismatch")
 	}

@@ -1,4 +1,4 @@
-# Back-End Dev Document
+# 	Back-End Dev Document
 
 v1.x版本
 
@@ -142,8 +142,19 @@ v1.x版本
 * data - json
   * act_token
     * string
+  * upload_token
+    * string
 * resp -> resUserSignin
   * text
+
+### 2.5.1 /api/user/act/upload 签到操作
+
+* post
+* data - json
+  * act_token
+    * string
+* resp -> resUserUpload
+  * upload_token
 
 ### 2.6 /api/user/act/log 我的参与记录
 
@@ -237,6 +248,15 @@ v1.x版本
   * data
     * []UserNotiFetchItem
 
+### 2.15 /api/user/act/cancel 取消签到
+
+* post
+* data - json
+  * act_token
+    * string
+
+
+
 ## 3. 管理端API
 
 ### 3.1 /api/admin/act/info 返回单个活动信息
@@ -257,14 +277,33 @@ v1.x版本
   * end_time
     * d
     * t
+  * upload
+    * enabled
+      * bool
+    * type
+      * string
+    * max_size
+      * int
+    * rename
+      * bool
 
 ### 3.2 /api/admin/act/new 新建活动
 
 * post
-* data -> FormDataAdminActNew json
+* data -> FormDataAdminAct json
   * name
   * announcement
   * pic
+  * daily_notify
+  * upload
+    * enabled
+      * bool
+    * type
+      * string
+    * max_size
+      * int
+    * rename
+      * bool
   * cheer_text
   * end_time
     * d
@@ -277,12 +316,22 @@ v1.x版本
 * post
 * data
   * act_id
-* data -> FormDataAdminActEdit json
+* data -> FormDataAdminAct json
   * name
   * active
     * bool
   * announcement
   * pic
+  * daily_notify
+  * upload
+    * enabled
+      * bool
+    * type
+      * string
+    * max_size
+      * int
+    * rename
+      * bool
   * cheer_text
   * end_time
     * d
@@ -355,6 +404,14 @@ v1.x版本
 * data: formDataAdminUserDel
   * user_id
   * sign
+
+### 3.11 /api/admin/act/export 导出所有文件
+
+* post
+* data -> formDataAdminActExport
+  * act_id
+* resp -> resAdminActExport
+  * download_url
 
 
 
@@ -518,6 +575,14 @@ v1.x版本
 
 **在活动(手动/自动)结束时结算**
 
+### 5.15 UserSignUpload 上传文件记录
+
+[key] SIGNIN_APP:UserSignUpload:{{upload_token}}
+
+[val] file_id
+
+[exp] 2min
+
 
 
 ## 6. 自定义数据结构
@@ -571,6 +636,8 @@ type WxPusherCallback struct {
    * string
 *  act_announcement
    * string
+*  act_type
+   *  int
 *  act_pic
    * string
 *  begin_time
@@ -586,6 +653,16 @@ type WxPusherCallback struct {
    * done
    * total
    * info
+*  file_options
+   *  allow_ext
+      *  string
+
+   *  max_size
+      *  string
+
+   *  note
+      *  string
+
 
 ### 6.11 CacheIDS 缓存活动信息
 
@@ -603,6 +680,7 @@ type WxPusherCallback struct {
 * id
   * 顺序id
 * act_id
+* type
 * name
 * begin_time
   * string
@@ -642,6 +720,15 @@ type WxPusherCallback struct {
 * name
 * sign
   * 签名
+
+### 6.16 file_options 文件上传选项
+
+* allow_content_type
+  * string
+* max_size
+  * int
+* rename
+  * bool
 
 
 

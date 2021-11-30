@@ -1,36 +1,36 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/url"
+	"os"
 	"signin/Logger"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type FormDataAdminActNew struct {
-	Name         string `json:"name"`
-	Announcement string `json:"announcement"`
-	Pic          string `json:"pic"`
-	CheerText    string `json:"cheer_text"`
-	EndTime      struct {
-		D string `json:"d"`
-		T string `json:"t"`
-	} `json:"end_time"`
-}
-type FormDataAdminActEdit struct {
+
+type FormDataAdminAct struct {
 	ActID        int    `json:"act_id"`
 	Name         string `json:"name"`
-	Active       bool    `json:"active"`
+	Active       bool   `json:"active"`
 	Announcement string `json:"announcement"`
 	Pic          string `json:"pic"`
+	DailyNotify bool `json:"daily_notify"`
 	CheerText    string `json:"cheer_text"`
 	EndTime      struct {
 		D string `json:"d"`
 		T string `json:"t"`
 	} `json:"end_time"`
+	Upload struct{
+		Enabled bool `json:"enabled"`
+		Type string `json:"type"`
+		MaxSize int `json:"max_size"`
+		Rename bool `json:"rename"`
+	}`json:"upload"`
 }
 
 type FormDataAdminClassEdit struct {
@@ -74,15 +74,20 @@ func adminActInfoHandler(c *gin.Context) {
 	res.Data.ActID = act.ActID
 	res.Data.Name = act.Name
 	res.Data.Announcement = act.Announcement
+	if act.DailyNotiEnabled == 1 {
+		res.Data.DailyNotify = true
+	}else{
+		res.Data.DailyNotify = false
+	}
 	if act.Pic == "/static/image/default.jpg" {
 		res.Data.Pic = ""
-	}else{
+	} else {
 		res.Data.Pic = act.Pic
 	}
 	res.Data.CheerText = act.CheerText
-	if act.Active == 1{
+	if act.Active == 1 {
 		res.Data.Active = true
-	}else{
+	} else {
 		res.Data.Active = false
 	}
 
@@ -90,6 +95,28 @@ func adminActInfoHandler(c *gin.Context) {
 	et := strings.Split(ts2DateString(act.EndTime), " ")
 	res.Data.EndTime.D = et[0]
 	res.Data.EndTime.T = et[1][:5]
+
+	//处理上传规则
+	if act.Type == ACT_TYPE_UPLOAD {
+		res.Data.Upload.Enabled = true
+		opts := new(FileOptions)
+		err = json.Unmarshal([]byte(act.FileOpts),opts)
+		if err != nil {
+			Logger.Error.Println("[管理员][获取活动信息]解析文件上传要求失败", err, auth)
+			returnErrorJson(c, "系统异常(-3)")
+			return
+		}
+		//仅支持单文件
+		if strings.Contains(opts.AllowContentType[0],"image"){
+			res.Data.Upload.Type = "image"
+		}else{
+			res.Data.Upload.Type = "archive"
+		}
+		res.Data.Upload.Rename = opts.Rename
+		res.Data.Upload.MaxSize = opts.MaxSize
+	}else{
+		res.Data.Upload.Enabled = false
+	}
 
 	//返回
 	c.JSON(200, res)
@@ -103,7 +130,7 @@ func adminActNewHandler(c *gin.Context) {
 	}
 
 	//与adminActEditHandler代码类似
-	form := new(FormDataAdminActNew)
+	form := new(FormDataAdminAct)
 	err = c.ShouldBindJSON(form)
 	if err != nil {
 		Logger.Info.Println("[管理员][创建活动]参数绑定失败", err, auth)
@@ -144,19 +171,60 @@ func adminActNewHandler(c *gin.Context) {
 		return
 	}
 
+	//文件上传
+	actType := ACT_TYPE_NORMAL
+	fileOpts := ""
+	if form.Upload.Enabled == true{
+		actType = ACT_TYPE_UPLOAD
+		opts := new(FileOptions)
+		opts.Rename = form.Upload.Rename
+		if form.Upload.MaxSize < 1 || form.Upload.MaxSize>100{
+			returnErrorJson(c, "文件大小无效")
+			return
+		}
+		opts.MaxSize = form.Upload.MaxSize
+		opts.AllowContentType = make([]string,0)
+		if form.Upload.Type == "image"{
+			opts.AllowContentType = append(opts.AllowContentType,"image/png")
+			opts.AllowContentType = append(opts.AllowContentType,"image/jpeg")
+		}else if form.Upload.Type == "archive"{
+			opts.AllowContentType = append(opts.AllowContentType,"application/zip")
+			opts.AllowContentType = append(opts.AllowContentType,"application/x-rar-compressed")
+		}else{
+			returnErrorJson(c, "文件类型无效")
+			return
+		}
+		tmp,err := json.Marshal(opts)
+		if err != nil {
+			Logger.Error.Println("[管理员][创建活动]FileOptions格式化失败:",err)
+			returnErrorJson(c, "FileOptions格式化失败")
+			return
+		}
+		fileOpts = string(tmp)
+	}
+
+	//每日提醒开关
+	dailyNoti := 1
+	if form.DailyNotify == false{
+		dailyNoti = 0
+	}
+
 	//更新数据库activity
-	dbrt, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`,`active`, `name`, `announcement`, `cheer_text`, `pic`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`) VALUES (NULL, ?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?);",
+	dbrt, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`,`active`,`type`, `name`, `announcement`, `cheer_text`, `pic`,`daily_noti_enabled`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`,`file_opts`) VALUES (NULL, ?, ?,?, ?,?, ?, ?, ?,?, ?, ?, ?, ?,?);",
 		auth.ClassId,
 		1, //active
+		actType,
 		form.Name,
 		form.Announcement,
 		form.CheerText,
 		picUrl,
+		dailyNoti,//每日提醒
 		strconv.FormatInt(time.Now().Unix(), 10),
 		strconv.FormatInt(et, 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
 		auth.UserID,
+		fileOpts,
 	)
 	if err != nil {
 		Logger.Error.Println("[管理员][创建活动]更新act数据库失败", err, auth)
@@ -197,7 +265,7 @@ func adminActEditHandler(c *gin.Context) {
 		return
 	}
 
-	form := new(FormDataAdminActEdit)
+	form := new(FormDataAdminAct)
 	err = c.ShouldBindJSON(form)
 	if err != nil {
 		Logger.Info.Println("[管理员][编辑活动信息]参数绑定失败", err, auth)
@@ -220,10 +288,10 @@ func adminActEditHandler(c *gin.Context) {
 	var et int64
 	//校验时间格式是否有效(仅在变更活动状态时检查)
 	endTime := ""
-	if (form.Active == true && act.Active == 0)||(form.Active == false && act.Active == 1) {//et有变更
-		if form.Active == false{
+	if (form.Active == true && act.Active == 0) || (form.Active == false && act.Active == 1) { //et有变更
+		if form.Active == false {
 			et = time.Now().Unix()
-		}else{
+		} else {
 			et, err = dateString2ts(form.EndTime.D + " " + form.EndTime.T)
 			if err != nil || et < time.Now().Unix() {
 				Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.EndTime.D+" "+form.EndTime.T, err, auth)
@@ -232,10 +300,9 @@ func adminActEditHandler(c *gin.Context) {
 			}
 		}
 		endTime = strconv.FormatInt(et, 10)
-	}else{//et无变更
+	} else { //et无变更
 		endTime = act.EndTime
 	}
-
 
 	//校验图片地址
 	picUrl := ""
@@ -263,12 +330,18 @@ func adminActEditHandler(c *gin.Context) {
 	}
 
 	active := 0
-	if form.Active == true{
+	if form.Active == true {
 		active = 1
 	}
 
+	//每日提醒开关
+	dailyNoti := 1
+	if form.DailyNotify == false{
+		dailyNoti = 0
+	}
+
 	//更新数据库
-	_, err = db.Exec("UPDATE `activity` SET `name` = ?,`active`=?,`announcement`=?,`pic`=?,`cheer_text`=?,`end_time`=?,`update_time`=? WHERE `activity`.`act_id` = ?;",
+	_, err = db.Exec("UPDATE `activity` SET `name` = ?,`active`=?,`announcement`=?,`pic`=?,`cheer_text`=?,`end_time`=?,`update_time`=?,`daily_noti_enabled`=? WHERE `activity`.`act_id` = ?;",
 		form.Name,
 		active,
 		form.Announcement,
@@ -276,6 +349,7 @@ func adminActEditHandler(c *gin.Context) {
 		form.CheerText,
 		endTime,
 		strconv.FormatInt(time.Now().Unix(), 10),
+		dailyNoti,
 		form.ActID,
 	)
 	if err != nil {
@@ -458,6 +532,7 @@ func adminActListHandler(c *gin.Context) {
 		item.BeginTime = ts2DateString(acts[i].BeginTime)
 		item.EndTime = ts2DateString(acts[i].EndTime)
 		item.CreateBy = queryUserName(acts[i].CreateBy)
+		item.Type = acts[i].Type
 		if acts[i].Active == 1 {
 			activeCnt++
 			item.Id = activeCnt
@@ -481,10 +556,10 @@ func adminUserListHandler(c *gin.Context) {
 		return
 	}
 
-	users := make([]dbUser,0)
-	err = db.Select(&users,"select * from `user` where `class`=?",auth.ClassId)
+	users := make([]dbUser, 0)
+	err = db.Select(&users, "select * from `user` where `class`=?", auth.ClassId)
 	if err != nil {
-		Logger.Error.Println("[管理员用户列表]查询db失败:",err)
+		Logger.Error.Println("[管理员用户列表]查询db失败:", err)
 		returnErrorJson(c, "系统异常")
 		return
 	}
@@ -492,18 +567,18 @@ func adminUserListHandler(c *gin.Context) {
 	res := new(ResAdminUserList)
 	res.Status = 0
 	res.Data.Count = len(users)
-	res.Data.Data = make([]AdminUserListItem,0)
+	res.Data.Data = make([]AdminUserListItem, 0)
 
-	for i:=range users{
-		res.Data.Data = append(res.Data.Data,AdminUserListItem{
-			ID: i+1,
+	for i := range users {
+		res.Data.Data = append(res.Data.Data, AdminUserListItem{
+			ID:     i + 1,
 			UserID: users[i].UserID,
-			Name:users[i].Name,
-			Sign: MD5_short(fmt.Sprintf("%d%d%s_roy233com",users[i].UserID,auth.ClassId,auth.ID)),
+			Name:   users[i].Name,
+			Sign:   MD5_short(fmt.Sprintf("%d%d%s_roy233com", users[i].UserID, auth.ClassId, auth.ID)),
 		})
 	}
 
-	c.JSON(200,res)
+	c.JSON(200, res)
 
 }
 
