@@ -524,7 +524,7 @@ func UserActUploadHandler(c *gin.Context) {
 	//存储redis
 	fileId,_ := dbRes.LastInsertId()
 	uploadToken := MD5_short(fmt.Sprintf("%d%d%d",time.Now().UnixNano(),auth.UserID,actID))
-	rdb.Set(ctx,"SIGNIN_APP:UserSignUpload:"+uploadToken,fileId,-1)
+	rdb.Set(ctx,"SIGNIN_APP:UserSignUpload:"+uploadToken,fileId,5*time.Minute)
 
 	res := new(ResUserUpload)
 	res.Status = 0
@@ -597,6 +597,7 @@ func UserActSigninHandler(c *gin.Context) {
 			returnErrorJson(c, "您尚未完成文件上传")
 			return
 		}
+		rdb.Del(ctx,"SIGNIN_APP:UserSignUpload:"+form.UploadToken)
 	}
 
 	//写入log表
