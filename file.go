@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"signin/Logger"
+	"time"
 )
 
 var cosClient *cos.Client
@@ -83,6 +84,18 @@ func cosDownload(objKey string,dest string) error{
 		context.Background(), objKey, dest, opt,
 	)
 	return err
+}
+
+func cosGetUrl(objKey string,expTime time.Duration) (imgUrl string,err error) {
+	var tmp *url.URL
+	tmp,err = cosClient.Object.GetPresignedURL(ctx,"GET", objKey,config.Cos.SecretID,config.Cos.SecretKey,expTime,nil)
+	if err != nil {
+		Logger.Error.Println("[COS]获取签名url失败:",err.Error())
+		return
+	}
+	imgUrl = tmp.String()
+	Logger.Info.Println("[COS]生成签名URL成功:",tmp.String())
+	return
 }
 
 // Compress 压缩文件
