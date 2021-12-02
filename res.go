@@ -242,6 +242,12 @@ type userActInfo struct {
 		MaxSize string `json:"max_size"`
 		Note string `json:"note"`
 	}`json:"file_options"`
+	Upload struct{
+		Enabled bool `json:"enabled"`
+		Type string `json:"type"`
+		ImgUrl string `json:"img_url"`
+		DownloadUrl string `json:"download_url"`
+	}`json:"upload"`
 }
 
 type adminActListItem struct {

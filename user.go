@@ -309,14 +309,37 @@ func UserActInfoHandler(c *gin.Context) {
 		}
 
 		//查询是否已参与
-		logId := 0
-		_ = db.Get(&logId, "select `log_id` from `signin_log` where `user_id`=? and `act_id`=?",
+		myLog := new(dbLog)
+		_ = db.Get(myLog, "select * from `signin_log` where `user_id`=? and `act_id`=?",
 			auth.UserID,
 			act.ActID)
-		if logId == 0 {
+		if myLog.LogID == 0 {
 			actItem.Status = 0 //未参与
 		} else {
 			actItem.Status = 1 //已参与
+			//获取上传的文件预览
+			if act.Type == ACT_TYPE_UPLOAD {
+				actItem.Upload.Enabled = true
+				myFile := new(dbFile)
+				err := db.Get(myFile,"select * from `file` where `file_id`=?",myLog.FileID)
+				if myFile.Status == FILE_STATUS_REMOTE {
+					if strings.Contains(myFile.ContentType,"image") == true{
+						actItem.Upload.Type = "image"
+						actItem.Upload.ImgUrl,err = cosGetUrl(myFile.Remote,5*time.Minute)
+						actItem.Upload.ImgUrl += "&imageMogr2/format/jpg/interlace/0/quality/36"
+					}else{
+						actItem.Upload.Type = "other"
+						actItem.Upload.DownloadUrl,err = cosGetUrl(myFile.Remote,5*time.Minute)
+					}
+				}
+
+				if err != nil {//上方一旦出现错误
+					actItem.Upload.Enabled = true
+					actItem.Upload.Type = "other"
+					actItem.Upload.DownloadUrl = config.General.BaseUrl + "/#/error/文件不存在或已过期"
+					Logger.Error.Println("[个人信息查询]获取已上传文件失败:",err)
+				}
+			}
 		}
 		res.Data.List = append(res.Data.List, actItem)
 		res.Data.Total++

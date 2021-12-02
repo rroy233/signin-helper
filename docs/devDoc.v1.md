@@ -662,6 +662,13 @@ type WxPusherCallback struct {
 
    *  note
       *  string
+*  upload
+   * enabled
+     * bool
+   * type
+     * string
+   * img_url
+   * download_url
 
 
 ### 6.11 CacheIDS 缓存活动信息
@@ -734,34 +741,6 @@ type WxPusherCallback struct {
 
 ## 7. 用户群组ID
 
-普通用户:8
+普通用户:其他
 
 管理员:7
-
-
-
-## v1.x 变更
-
-* #2.3 /api/user/act/info 返回结果数据结构改变，用token代替id，返回数组
-  * resUserActInfo大改，部分属性转移至#6.4结构体
-* #2.4 /api/user/act/statistic
-  * 新增请求字段act_token，用户使用token查询
-* #2.5 /api/user/act/signin params
-  * 请求字段改ts为act_token
-* #3.1 /api/admin/act/info
-  * 新增查询条件act_id。查询单个活动
-  * 返回新增active字段
-* #3.2 /api/admin/act/new 
-  * 删除请求字段start_time
-  * **需要强制更新活动id缓存**
-* #3.3 /api/admin/act/edit
-  * 新增请求字段act_id，active，使用act_id编辑单个活动
-  * 去除请求字段begin_time。默认开始时间为发布的时间，一旦将active置为1，就更新begin_time
-  * **需要强制更新活动id缓存**
-* 新增 #3.4 /api/admin/act/statistic 接口
-* #3.5 /api/admin/class/info
-  * 删除活动相关字段
-* 新增 #3.7 /api/admin/act/list 接口
-* #5.9~# redis
-* 删除 #5.5 Class_Statistic
-
