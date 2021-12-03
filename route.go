@@ -29,6 +29,7 @@ func init() {
 	router.Static("/js", "./views/dist/js")
 	router.Static("/css", "./views/dist/css")
 	router.Static("/img", "./views/dist/img")
+	router.Static("/export", "./storage/export")
 
 	router.Static("/static", "./static")
 

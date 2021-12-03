@@ -703,7 +703,7 @@ func AdminActExportHandler(c *gin.Context) {
 	}
 
 	//创建目录
-	dirName := act.Name+"_批量导出_" + fmt.Sprintf("%d",time.Now().Unix())
+	dirName := act.Name+"_批量导出_" + MD5_short(fmt.Sprintf("%d%d",act.ActID,time.Now().UnixNano()))
 	err = os.Mkdir("./storage/temp/"+dirName,os.ModePerm)
 	if err != nil {
 		Logger.Error.Println("[管理员导出数据]创建目录失败：",err)
@@ -731,7 +731,7 @@ func AdminActExportHandler(c *gin.Context) {
 		return
 	}
 	var fs = []*os.File{f}
-	err = Compress(fs,"./static/"+dirName+".zip")
+	err = Compress(fs,"./storage/export/"+dirName+".zip")
 	if err != nil {
 		Logger.Error.Println("[管理员导出数据]压缩失败：",err)
 		returnErrorJson(c,"系统异常(-3)")
@@ -743,10 +743,10 @@ func AdminActExportHandler(c *gin.Context) {
 		cleanTime = 1
 	}
 	go trashCleaner("./storage/temp/"+dirName,0)
-	go trashCleaner("./static/"+dirName+".zip",cleanTime)
+	go trashCleaner("./storage/export/"+dirName+".zip",cleanTime)
 
 	res := new(ResAdminActExport)
 	res.Status = 0
-	res.Data.DownloadUrl = config.General.BaseUrl+"/static/"+dirName+".zip"
+	res.Data.DownloadUrl = config.General.BaseUrl+"/export/"+dirName+".zip"
 	c.JSON(200,res)
 }

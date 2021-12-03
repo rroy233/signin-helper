@@ -4,4 +4,4 @@ config.yaml
 *_test.go
 *.http
 views/dist/*
-*.zip
+storage/export/*.zip
