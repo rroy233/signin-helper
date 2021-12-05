@@ -245,13 +245,13 @@ func getTemplate(msgType int, level int) (*NotifyJob, error) {
 	return job, err
 }
 
-func trashCleaner(fileName string,minute int){
-	Logger.Info.Println("[自动清理]已收到任务清理:",fileName)
-	time.Sleep(time.Duration(minute)*time.Minute)
+func trashCleaner(fileName string, minute int) {
+	Logger.Info.Println("[自动清理]已收到任务清理:", fileName)
+	time.Sleep(time.Duration(minute) * time.Minute)
 	err := os.RemoveAll(fileName)
 	if err != nil {
-		Logger.Info.Println("[自动清理]清理:",fileName,"失败:",err)
-	}else{
-		Logger.Info.Println("[自动清理]清理:",fileName,"成功")
+		Logger.Info.Println("[自动清理]清理:", fileName, "失败:", err)
+	} else {
+		Logger.Info.Println("[自动清理]清理:", fileName, "成功")
 	}
 }

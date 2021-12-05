@@ -108,18 +108,18 @@ type ResAdminActInfo struct {
 		Active       bool   `json:"active"`
 		Announcement string `json:"announcement"`
 		Pic          string `json:"pic"`
-		DailyNotify bool `json:"daily_notify"`
+		DailyNotify  bool   `json:"daily_notify"`
 		CheerText    string `json:"cheer_text"`
 		EndTime      struct {
 			D string `json:"d"`
 			T string `json:"t"`
 		} `json:"end_time"`
-		Upload struct{
-			Enabled bool `json:"enabled"`
-			Type string `json:"type"`
-			MaxSize int `json:"max_size"`
-			Rename bool `json:"rename"`
-		}`json:"upload"`
+		Upload struct {
+			Enabled bool     `json:"enabled"`
+			Type    []string `json:"type"`
+			MaxSize int      `json:"max_size"`
+			Rename  bool     `json:"rename"`
+		} `json:"upload"`
 	} `json:"data"`
 }
 
@@ -195,11 +195,10 @@ type ResUserUpload struct {
 
 type ResAdminActExport struct {
 	Res
-	Data struct{
+	Data struct {
 		DownloadUrl string `json:"download_url"`
-	}`json:"data"`
+	} `json:"data"`
 }
-
 
 //自定义数据结构
 type actStatisticUser struct {
@@ -229,6 +228,7 @@ type userActInfo struct {
 	ActAnnouncement string `json:"act_announcement"`
 	ActPic          string `json:"act_pic"`
 	ActType         int    `json:"act_type"`
+	NotiEnabled     int    `json:"noti_enabled"`
 	BeginTime       string `json:"begin_time"`
 	EndTime         string `json:"end_time"`
 	Status          int    `json:"status"`
@@ -237,23 +237,23 @@ type userActInfo struct {
 		Total int    `json:"total"`
 		Info  string `json:"info"`
 	} `json:"statistic"`
-	FileOptions struct{
+	FileOptions struct {
 		AllowExt string `json:"allow_ext"`
-		MaxSize string `json:"max_size"`
-		Note string `json:"note"`
-	}`json:"file_options"`
-	Upload struct{
-		Enabled bool `json:"enabled"`
-		Type string `json:"type"`
-		ImgUrl string `json:"img_url"`
+		MaxSize  string `json:"max_size"`
+		Note     string `json:"note"`
+	} `json:"file_options"`
+	Upload struct {
+		Enabled     bool   `json:"enabled"`
+		Type        string `json:"type"`
+		ImgUrl      string `json:"img_url"`
 		DownloadUrl string `json:"download_url"`
-	}`json:"upload"`
+	} `json:"upload"`
 }
 
 type adminActListItem struct {
 	Id        int    `json:"id"`
 	ActID     int    `json:"act_id"`
-	Type int `json:"type"`
+	Type      int    `json:"type"`
 	Name      string `json:"name"`
 	BeginTime string `json:"begin_time"`
 	EndTime   string `json:"end_time"`

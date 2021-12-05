@@ -13,7 +13,7 @@ var ssoClient *sso.Client
 var TZ = time.FixedZone("CST", 8*3600)
 
 func main() {
-	Logger.New()
+	Logger.New(config.General.Production)
 	initDB()
 	initRedis()
 	initMail()

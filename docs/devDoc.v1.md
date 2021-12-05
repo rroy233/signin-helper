@@ -2,18 +2,6 @@
 
 v1.x版本
 
-
-
-## TODO LIST
-
-- [x] 实现邮箱通知
-- [x] 实现wx通知
-- [x] 改用“骚话库”进行通知
-- [x] v1.x 多任务
-- [x] 细化通知机制
-
-
-
 ## 1. 通用API
 
 ### 1.1 /api/ssoCallback 单点登录回调接口
@@ -281,7 +269,7 @@ v1.x版本
     * enabled
       * bool
     * type
-      * string
+      * []string
     * max_size
       * int
     * rename
@@ -299,7 +287,7 @@ v1.x版本
     * enabled
       * bool
     * type
-      * string
+      * []string
     * max_size
       * int
     * rename
@@ -327,7 +315,7 @@ v1.x版本
     * enabled
       * bool
     * type
-      * string
+      * []string
     * max_size
       * int
     * rename
@@ -638,6 +626,9 @@ type WxPusherCallback struct {
    * string
 *  act_type
    *  int
+*  noti_enabled
+   *  int
+
 *  act_pic
    * string
 *  begin_time

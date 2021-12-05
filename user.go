@@ -24,7 +24,7 @@ type FormDataSignIn struct {
 }
 
 type FormDataCancel struct {
-	ActToken    string `json:"act_token" binding:"required"`
+	ActToken string `json:"act_token" binding:"required"`
 }
 
 type FormDataUserNotiEdit struct {
@@ -256,6 +256,7 @@ func UserActInfoHandler(c *gin.Context) {
 		actItem.ActToken = actToken
 		actItem.ActName = act.Name
 		actItem.ActAnnouncement = act.Announcement
+		actItem.NotiEnabled = act.DailyNotiEnabled
 		//判断是否需要使用默认图片
 		if act.Pic == "" {
 			actItem.ActPic = "/static/image/default.jpg"
@@ -263,7 +264,6 @@ func UserActInfoHandler(c *gin.Context) {
 			actItem.ActPic = act.Pic
 		}
 		actItem.BeginTime = ts2DateString(act.BeginTime)
-
 
 		//判断是否需要上传文件
 		actItem.ActType = act.Type
@@ -286,24 +286,24 @@ func UserActInfoHandler(c *gin.Context) {
 		}
 
 		//文件上传要求
-		if act.Type == ACT_TYPE_UPLOAD{
+		if act.Type == ACT_TYPE_UPLOAD {
 			opts := new(FileOptions)
-			err = json.Unmarshal([]byte(act.FileOpts),opts)
+			err = json.Unmarshal([]byte(act.FileOpts), opts)
 			if err != nil {
 				Logger.Error.Println("[个人信息查询]FileOpts解析失败:", err)
 				returnErrorJson(c, "FileOpts解析失败")
 				return
 			}
-			actItem.FileOptions.MaxSize = fmt.Sprintf("%d MB",opts.MaxSize)
-			for i:=range opts.AllowContentType{
-				if i != 0{
-					actItem.FileOptions.AllowExt +=","
+			actItem.FileOptions.MaxSize = fmt.Sprintf("%d MB", opts.MaxSize)
+			for i := range opts.AllowContentType {
+				if i != 0 {
+					actItem.FileOptions.AllowExt += "、"
 				}
-				actItem.FileOptions.AllowExt += fmt.Sprintf("【%s】",fileExt[opts.AllowContentType[i]])
+				actItem.FileOptions.AllowExt += strings.Replace(fileExt[opts.AllowContentType[i]], ".", "", -1)
 			}
-			if opts.Rename == false{
+			if opts.Rename == false {
 				actItem.FileOptions.Note = "请按照要求命名文件"
-			}else{
+			} else {
 				actItem.FileOptions.Note = "无"
 			}
 		}
@@ -321,23 +321,23 @@ func UserActInfoHandler(c *gin.Context) {
 			if act.Type == ACT_TYPE_UPLOAD {
 				actItem.Upload.Enabled = true
 				myFile := new(dbFile)
-				err := db.Get(myFile,"select * from `file` where `file_id`=?",myLog.FileID)
+				err := db.Get(myFile, "select * from `file` where `file_id`=?", myLog.FileID)
 				if myFile.Status == FILE_STATUS_REMOTE {
-					if strings.Contains(myFile.ContentType,"image") == true{
+					if strings.Contains(myFile.ContentType, "image") == true {
 						actItem.Upload.Type = "image"
-						actItem.Upload.ImgUrl,err = cosGetUrl(myFile.Remote,5*time.Minute)
+						actItem.Upload.ImgUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute)
 						actItem.Upload.ImgUrl += "&imageMogr2/format/jpg/interlace/0/quality/36"
-					}else{
+					} else {
 						actItem.Upload.Type = "other"
-						actItem.Upload.DownloadUrl,err = cosGetUrl(myFile.Remote,5*time.Minute)
+						actItem.Upload.DownloadUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute)
 					}
 				}
 
-				if err != nil {//上方一旦出现错误
+				if err != nil { //上方一旦出现错误
 					actItem.Upload.Enabled = true
 					actItem.Upload.Type = "other"
 					actItem.Upload.DownloadUrl = config.General.BaseUrl + "/#/error/文件不存在或已过期"
-					Logger.Error.Println("[个人信息查询]获取已上传文件失败:",err)
+					Logger.Error.Println("[个人信息查询]获取已上传文件失败:", err)
 				}
 			}
 		}
@@ -444,7 +444,7 @@ func UserActUploadHandler(c *gin.Context) {
 		return
 	}
 
-	act,err := getAct(actID)
+	act, err := getAct(actID)
 	if err != nil {
 		Logger.Error.Println("[签到]查询活动信息失败", err)
 		returnErrorJson(c, "查询活动信息失败")
@@ -453,23 +453,22 @@ func UserActUploadHandler(c *gin.Context) {
 
 	file, _ := c.FormFile("file")
 
-
 	//获取活动对文件的要求
-	if act.FileOpts == ""{
+	if act.FileOpts == "" {
 		Logger.Error.Println("[签到]管理员配置文件上传要求错误")
 		returnErrorJson(c, "管理员配置文件上传要求错误")
 		return
 	}
 	opts := new(FileOptions)
-	err = json.Unmarshal([]byte(act.FileOpts),opts)
+	err = json.Unmarshal([]byte(act.FileOpts), opts)
 	if err != nil {
-		Logger.Error.Println("[签到]解码活动对文件的要求失败",err)
+		Logger.Error.Println("[签到]解码活动对文件的要求失败", err)
 		returnErrorJson(c, "解码活动对文件的要求失败")
 		return
 	}
 	ext := ""
-	for i:= range opts.AllowContentType{
-		if opts.AllowContentType[i] == file.Header.Values("Content-Type")[0]{
+	for i := range opts.AllowContentType {
+		if opts.AllowContentType[i] == file.Header.Values("Content-Type")[0] {
 			ext = fileExt[file.Header.Values("Content-Type")[0]]
 		}
 	}
@@ -480,7 +479,7 @@ func UserActUploadHandler(c *gin.Context) {
 
 	//文件大小
 	sizeLimit := int64(opts.MaxSize << 20)
-	if file.Size > sizeLimit{
+	if file.Size > sizeLimit {
 		returnErrorJson(c, "文件大小超过规定值")
 		return
 	}
@@ -490,37 +489,37 @@ func UserActUploadHandler(c *gin.Context) {
 		returnErrorJson(c, "文件名无效")
 		return
 	}
-	fileNameEncoded := fmt.Sprintf("Act%d_User%d_%s", actID, auth.UserID,fmt.Sprintf("%d", time.Now().Unix()))
-	err = c.SaveUploadedFile(file, "./storage/upload/"+fmt.Sprintf("%s%s",fileNameEncoded,ext))
+	fileNameEncoded := fmt.Sprintf("Act%d_User%d_%s", actID, auth.UserID, fmt.Sprintf("%d", time.Now().Unix()))
+	err = c.SaveUploadedFile(file, "./storage/upload/"+fmt.Sprintf("%s%s", fileNameEncoded, ext))
 	if err != nil {
 		returnErrorJson(c, err.Error())
 		return
 	}
-	Logger.Info.Printf("[文件上传]UID:%d，上传文件%s",auth.UserID,fmt.Sprintf("%s%s",fileNameEncoded,ext))
+	Logger.Info.Printf("[文件上传]UID:%d，上传文件%s", auth.UserID, fmt.Sprintf("%s%s", fileNameEncoded, ext))
 
 	fileDB := new(dbFile)
 	fileDB.Status = FILE_STATUS_REMOTE
 	fileDB.UserID = auth.UserID
 	fileDB.ActID = actID
-	if opts.Rename == true{
+	if opts.Rename == true {
 		fileDB.FileName = auth.Name
-	}else{
-		fileDB.FileName = strings.Split(file.Filename,".")[0]
+	} else {
+		fileDB.FileName = strings.Split(file.Filename, ".")[0]
 	}
 	fileDB.ContentType = file.Header.Values("Content-Type")[0]
 	fileDB.Local = ""
 
-	objKey,err := cosUpload( "./storage/upload/"+fmt.Sprintf("%s%s",fileNameEncoded,ext),fmt.Sprintf("%s%s",fileNameEncoded,ext))
+	objKey, err := cosUpload("./storage/upload/"+fmt.Sprintf("%s%s", fileNameEncoded, ext), fmt.Sprintf("%s%s", fileNameEncoded, ext))
 	if err != nil {
-		Logger.Error.Println("[签到]文件上传cos失败:",err)
-		returnErrorJson(c,"文件上传失败，请重试！")
+		Logger.Error.Println("[签到]文件上传cos失败:", err)
+		returnErrorJson(c, "文件上传失败，请重试！")
 	}
 
 	fileDB.Remote = objKey
-	fileDB.ExpTime = strconv.FormatInt(time.Now().AddDate(0,1,0).Unix(),10)
-	fileDB.UploadTime = strconv.FormatInt(time.Now().Unix(),10)
+	fileDB.ExpTime = strconv.FormatInt(time.Now().AddDate(0, 1, 0).Unix(), 10)
+	fileDB.UploadTime = strconv.FormatInt(time.Now().Unix(), 10)
 
-	dbRes,err := db.Exec("INSERT INTO `file` (`file_id`, `status`, `user_id`, `act_id`, `file_name`, `content_type`, `local`, `remote`, `exp_time`, `upload_time`) VALUES (NULL,?, ?, ?, ?, ?, ?, ?, ?, ?);",
+	dbRes, err := db.Exec("INSERT INTO `file` (`file_id`, `status`, `user_id`, `act_id`, `file_name`, `content_type`, `local`, `remote`, `exp_time`, `upload_time`) VALUES (NULL,?, ?, ?, ?, ?, ?, ?, ?, ?);",
 		fileDB.Status,
 		fileDB.UserID,
 		fileDB.ActID,
@@ -532,22 +531,22 @@ func UserActUploadHandler(c *gin.Context) {
 		fileDB.UploadTime,
 	)
 	if err != nil {
-		Logger.Error.Println("[签到]文件登记失败:",err)
-		returnErrorJson(c,"文件登记失败，请联系管理员！")
+		Logger.Error.Println("[签到]文件登记失败:", err)
+		returnErrorJson(c, "文件登记失败，请联系管理员！")
 	}
 
 	//删除文件
 	defer func() {
-		err:=os.Remove("./storage/upload/"+fmt.Sprintf("%s%s",fileNameEncoded,ext))
-		if err != nil{
-			Logger.Error.Printf("[文件上传]文件%s删除失败！！！",auth.UserID,fmt.Sprintf("%s%s",fileNameEncoded,ext))
+		err := os.Remove("./storage/upload/" + fmt.Sprintf("%s%s", fileNameEncoded, ext))
+		if err != nil {
+			Logger.Error.Printf("[文件上传]文件%s删除失败！！！", auth.UserID, fmt.Sprintf("%s%s", fileNameEncoded, ext))
 		}
 	}()
 
 	//存储redis
-	fileId,_ := dbRes.LastInsertId()
-	uploadToken := MD5_short(fmt.Sprintf("%d%d%d",time.Now().UnixNano(),auth.UserID,actID))
-	rdb.Set(ctx,"SIGNIN_APP:UserSignUpload:"+uploadToken,fileId,5*time.Minute)
+	fileId, _ := dbRes.LastInsertId()
+	uploadToken := MD5_short(fmt.Sprintf("%d%d%d", time.Now().UnixNano(), auth.UserID, actID))
+	rdb.Set(ctx, "SIGNIN_APP:UserSignUpload:"+uploadToken, fileId, 5*time.Minute)
 
 	res := new(ResUserUpload)
 	res.Status = 0
@@ -615,12 +614,12 @@ func UserActSigninHandler(c *gin.Context) {
 	//判断是否上传文件
 	fileID := -1
 	if act.Type == ACT_TYPE_UPLOAD {
-		fileID,_ = strconv.Atoi(rdb.Get(ctx,"SIGNIN_APP:UserSignUpload:"+form.UploadToken).Val())
+		fileID, _ = strconv.Atoi(rdb.Get(ctx, "SIGNIN_APP:UserSignUpload:"+form.UploadToken).Val())
 		if fileID <= 0 {
 			returnErrorJson(c, "您尚未完成文件上传")
 			return
 		}
-		rdb.Del(ctx,"SIGNIN_APP:UserSignUpload:"+form.UploadToken)
+		rdb.Del(ctx, "SIGNIN_APP:UserSignUpload:"+form.UploadToken)
 	}
 
 	//写入log表
@@ -1006,7 +1005,7 @@ func UserNotiFetchHandler(c *gin.Context) {
 	c.JSON(200, res)
 }
 
-func UserActCancelHandler(c *gin.Context){
+func UserActCancelHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {
 		returnErrorJson(c, "登录状态无效")
@@ -1048,8 +1047,8 @@ func UserActCancelHandler(c *gin.Context){
 	err = db.Get(log, "select * from `signin_log` where `user_id`=? and `act_id`=?",
 		auth.UserID,
 		actID)
-	if err != nil || log == nil{
-		Logger.Error.Println("[取消签到]查询是否已参与", err,log ,auth)
+	if err != nil || log == nil {
+		Logger.Error.Println("[取消签到]查询是否已参与", err, log, auth)
 		returnErrorJson(c, "查询签到记录失败")
 		return
 	}
@@ -1059,8 +1058,8 @@ func UserActCancelHandler(c *gin.Context){
 		file := new(dbFile)
 		err = db.Get(file, "select * from `file` where `file_id`=?",
 			log.FileID)
-		if err != nil || file == nil{
-			Logger.Error.Println("[取消签到]获取文件失败", err,log ,auth)
+		if err != nil || file == nil {
+			Logger.Error.Println("[取消签到]获取文件失败", err, log, auth)
 			returnErrorJson(c, "查询签到记录失败(-1)")
 			return
 		}
@@ -1073,8 +1072,8 @@ func UserActCancelHandler(c *gin.Context){
 
 		//更新file
 		file.Status = FILE_STATUS_DELETED
-		file.UploadTime = fmt.Sprintf("%d",time.Now().Unix())
-		_,err = db.Exec("update `file` set `status`=?,`upload_time`=? where `file_id`=?;",
+		file.UploadTime = fmt.Sprintf("%d", time.Now().Unix())
+		_, err = db.Exec("update `file` set `status`=?,`upload_time`=? where `file_id`=?;",
 			file.Status,
 			file.UploadTime,
 			file.FileID,
@@ -1087,7 +1086,7 @@ func UserActCancelHandler(c *gin.Context){
 	}
 
 	//更新signin_log
-	_,err = db.Exec("DELETE FROM `signin_log` WHERE `signin_log`.`log_id` = ?;",
+	_, err = db.Exec("DELETE FROM `signin_log` WHERE `signin_log`.`log_id` = ?;",
 		log.LogID,
 	)
 	if err != nil {
@@ -1100,6 +1099,6 @@ func UserActCancelHandler(c *gin.Context){
 	res.Status = 0
 	res.Msg = "取消成功"
 
-	c.JSON(200,res)
+	c.JSON(200, res)
 
 }

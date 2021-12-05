@@ -12,25 +12,24 @@ import (
 	"time"
 )
 
-
 type FormDataAdminAct struct {
 	ActID        int    `json:"act_id"`
 	Name         string `json:"name"`
 	Active       bool   `json:"active"`
 	Announcement string `json:"announcement"`
 	Pic          string `json:"pic"`
-	DailyNotify bool `json:"daily_notify"`
+	DailyNotify  bool   `json:"daily_notify"`
 	CheerText    string `json:"cheer_text"`
 	EndTime      struct {
 		D string `json:"d"`
 		T string `json:"t"`
 	} `json:"end_time"`
-	Upload struct{
-		Enabled bool `json:"enabled"`
-		Type string `json:"type"`
-		MaxSize int `json:"max_size"`
-		Rename bool `json:"rename"`
-	}`json:"upload"`
+	Upload struct {
+		Enabled bool     `json:"enabled"`
+		Type    []string `json:"type"`
+		MaxSize int      `json:"max_size"`
+		Rename  bool     `json:"rename"`
+	} `json:"upload"`
 }
 
 type FormDataAdminClassEdit struct {
@@ -76,7 +75,7 @@ func adminActInfoHandler(c *gin.Context) {
 	res.Data.Announcement = act.Announcement
 	if act.DailyNotiEnabled == 1 {
 		res.Data.DailyNotify = true
-	}else{
+	} else {
 		res.Data.DailyNotify = false
 	}
 	if act.Pic == "/static/image/default.jpg" {
@@ -100,21 +99,40 @@ func adminActInfoHandler(c *gin.Context) {
 	if act.Type == ACT_TYPE_UPLOAD {
 		res.Data.Upload.Enabled = true
 		opts := new(FileOptions)
-		err = json.Unmarshal([]byte(act.FileOpts),opts)
+		res.Data.Upload.Type = make([]string, 0)
+		err = json.Unmarshal([]byte(act.FileOpts), opts)
 		if err != nil {
 			Logger.Error.Println("[管理员][获取活动信息]解析文件上传要求失败", err, auth)
 			returnErrorJson(c, "系统异常(-3)")
 			return
 		}
-		//仅支持单文件
-		if strings.Contains(opts.AllowContentType[0],"image"){
-			res.Data.Upload.Type = "image"
-		}else{
-			res.Data.Upload.Type = "archive"
+
+		//解析文件类型
+		for i := range opts.AllowContentType {
+			if strings.Contains(opts.AllowContentType[i], "png") {
+				res.Data.Upload.Type = append(res.Data.Upload.Type, "图片")
+				continue
+			}
+			if strings.Contains(opts.AllowContentType[i], "zip") {
+				res.Data.Upload.Type = append(res.Data.Upload.Type, "压缩包")
+				continue
+			}
+			if strings.Contains(opts.AllowContentType[i], "msword") {
+				res.Data.Upload.Type = append(res.Data.Upload.Type, "word")
+				continue
+			}
+			if strings.Contains(opts.AllowContentType[i], "powerpoint") {
+				res.Data.Upload.Type = append(res.Data.Upload.Type, "ppt")
+				continue
+			}
+			if strings.Contains(opts.AllowContentType[i], "excel") {
+				res.Data.Upload.Type = append(res.Data.Upload.Type, "excel")
+				continue
+			}
 		}
 		res.Data.Upload.Rename = opts.Rename
 		res.Data.Upload.MaxSize = opts.MaxSize
-	}else{
+	} else {
 		res.Data.Upload.Enabled = false
 	}
 
@@ -174,29 +192,53 @@ func adminActNewHandler(c *gin.Context) {
 	//文件上传
 	actType := ACT_TYPE_NORMAL
 	fileOpts := ""
-	if form.Upload.Enabled == true{
+	if form.Upload.Enabled == true {
 		actType = ACT_TYPE_UPLOAD
 		opts := new(FileOptions)
 		opts.Rename = form.Upload.Rename
-		if form.Upload.MaxSize < 1 || form.Upload.MaxSize>100{
+		if form.Upload.MaxSize < 1 || form.Upload.MaxSize > 100 {
 			returnErrorJson(c, "文件大小无效")
 			return
 		}
+		if len(form.Upload.Type) == 0 {
+			returnErrorJson(c, "请至少选择一种文件类型")
+			return
+		}
 		opts.MaxSize = form.Upload.MaxSize
-		opts.AllowContentType = make([]string,0)
-		if form.Upload.Type == "image"{
-			opts.AllowContentType = append(opts.AllowContentType,"image/png")
-			opts.AllowContentType = append(opts.AllowContentType,"image/jpeg")
-		}else if form.Upload.Type == "archive"{
-			opts.AllowContentType = append(opts.AllowContentType,"application/zip")
-			opts.AllowContentType = append(opts.AllowContentType,"application/x-rar-compressed")
-		}else{
+		opts.AllowContentType = make([]string, 0)
+		for i := range form.Upload.Type {
+			if form.Upload.Type[i] == "image" {
+				opts.AllowContentType = append(opts.AllowContentType, "image/png")
+				opts.AllowContentType = append(opts.AllowContentType, "image/jpeg")
+				continue
+			}
+			if form.Upload.Type[i] == "archive" {
+				opts.AllowContentType = append(opts.AllowContentType, "application/zip")
+				opts.AllowContentType = append(opts.AllowContentType, "application/x-rar-compressed")
+				continue
+			}
+			if form.Upload.Type[i] == "word" {
+				opts.AllowContentType = append(opts.AllowContentType, "application/msword")
+				opts.AllowContentType = append(opts.AllowContentType, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+				continue
+			}
+			if form.Upload.Type[i] == "ppt" {
+				opts.AllowContentType = append(opts.AllowContentType, "application/vnd.ms-powerpoint")
+				opts.AllowContentType = append(opts.AllowContentType, "application/vnd.openxmlformats-officedocument.presentationml.presentation")
+				continue
+			}
+			if form.Upload.Type[i] == "excel" {
+				opts.AllowContentType = append(opts.AllowContentType, "application/vnd.ms-excel")
+				opts.AllowContentType = append(opts.AllowContentType, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+				continue
+			}
 			returnErrorJson(c, "文件类型无效")
 			return
 		}
-		tmp,err := json.Marshal(opts)
+
+		tmp, err := json.Marshal(opts)
 		if err != nil {
-			Logger.Error.Println("[管理员][创建活动]FileOptions格式化失败:",err)
+			Logger.Error.Println("[管理员][创建活动]FileOptions格式化失败:", err)
 			returnErrorJson(c, "FileOptions格式化失败")
 			return
 		}
@@ -205,10 +247,10 @@ func adminActNewHandler(c *gin.Context) {
 
 	//每日提醒开关
 	dailyNoti := 1
-	if form.DailyNotify == false{
+	if form.DailyNotify == false {
 		dailyNoti = 0
 	}
-
+	Logger.Debug.Println(fileOpts)
 	//更新数据库activity
 	dbrt, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`,`active`,`type`, `name`, `announcement`, `cheer_text`, `pic`,`daily_noti_enabled`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`,`file_opts`) VALUES (NULL, ?, ?,?, ?,?, ?, ?, ?,?, ?, ?, ?, ?,?);",
 		auth.ClassId,
@@ -218,7 +260,7 @@ func adminActNewHandler(c *gin.Context) {
 		form.Announcement,
 		form.CheerText,
 		picUrl,
-		dailyNoti,//每日提醒
+		dailyNoti, //每日提醒
 		strconv.FormatInt(time.Now().Unix(), 10),
 		strconv.FormatInt(et, 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
@@ -336,7 +378,7 @@ func adminActEditHandler(c *gin.Context) {
 
 	//每日提醒开关
 	dailyNoti := 1
-	if form.DailyNotify == false{
+	if form.DailyNotify == false {
 		dailyNoti = 0
 	}
 
@@ -616,22 +658,22 @@ func adminUserDelHandler(c *gin.Context) {
 	}
 
 	//获取记录，删除文件
-	files := make([]dbFile,0)
-	err = db.Select(&files,"select * from `file` where `user_id`=? and `status`=1",auth.UserID)
+	files := make([]dbFile, 0)
+	err = db.Select(&files, "select * from `file` where `user_id`=? and `status`=1", auth.UserID)
 	if err != nil {
 		Logger.Info.Println("[管理员删除用户]获取文件上传记录失败:", err)
 		returnErrorJson(c, "获取文件上传记录失败")
 		return
 	}
-	for i := range files{
+	for i := range files {
 		err := cosFileDel(files[i].Remote)
 		if err != nil {
-			Logger.Error.Println("[管理员删除用户]远端文件删除失败:",files[i].Remote,err)
+			Logger.Error.Println("[管理员删除用户]远端文件删除失败:", files[i].Remote, err)
 		}
 	}
-	_,err=db.Exec("update `file` set `status`=-1 where `user_id`=?",auth.UserID)
+	_, err = db.Exec("update `file` set `status`=-1 where `user_id`=?", auth.UserID)
 	if err != nil {
-		Logger.Error.Println("[管理员删除用户]更新db.file失败:",err)
+		Logger.Error.Println("[管理员删除用户]更新db.file失败:", err)
 	}
 
 	_, err = db.Exec("update `user` set `class`=0 where `user_id`=? and `class` = ?", form.UserID, auth.ClassId)
@@ -666,87 +708,87 @@ func AdminActExportHandler(c *gin.Context) {
 	form := new(FormDataAdminActExport)
 	err = c.ShouldBindJSON(form)
 	if err != nil {
-		Logger.Info.Println("[管理员导出数据]参数绑定失败：",err)
-		returnErrorJson(c,"参数无效(-1)")
+		Logger.Info.Println("[管理员导出数据]参数绑定失败：", err)
+		returnErrorJson(c, "参数无效(-1)")
 		return
 	}
 
-	act,err := getAct(form.ActID)
+	act, err := getAct(form.ActID)
 	if err != nil {
-		Logger.Error.Println("[管理员导出数据]获取活动失败：",err)
-		returnErrorJson(c,"获取活动失败")
+		Logger.Error.Println("[管理员导出数据]获取活动失败：", err)
+		returnErrorJson(c, "获取活动失败")
 		return
 	}
 
 	if act.ClassID != auth.ClassId {
-		Logger.Error.Println("[管理员导出数据]班级不匹配：",auth,form)
-		returnErrorJson(c,"参数无效(-2)")
+		Logger.Error.Println("[管理员导出数据]班级不匹配：", auth, form)
+		returnErrorJson(c, "参数无效(-2)")
 		return
 	}
 
 	if act.Type != ACT_TYPE_UPLOAD {
-		returnErrorJson(c,"当前活动未开启文件上传")
+		returnErrorJson(c, "当前活动未开启文件上传")
 		return
 	}
 
-	files := make([]dbFile,0)
-	err = db.Select(&files,"select * from `file` where `act_id`=? and `status` = 1",act.ActID)
+	files := make([]dbFile, 0)
+	err = db.Select(&files, "select * from `file` where `act_id`=? and `status` = 1", act.ActID)
 	if err != nil {
-		Logger.Error.Println("[管理员导出数据]查询数据库失败：",err)
-		returnErrorJson(c,"查询数据库失败")
+		Logger.Error.Println("[管理员导出数据]查询数据库失败：", err)
+		returnErrorJson(c, "查询数据库失败")
 		return
 	}
 
-	if len(files) == 0{
-		returnErrorJson(c,"文件数为0")
+	if len(files) == 0 {
+		returnErrorJson(c, "文件数为0")
 		return
 	}
 
 	//创建目录
-	dirName := act.Name+"_批量导出_" + MD5_short(fmt.Sprintf("%d%d",act.ActID,time.Now().UnixNano()))
-	err = os.Mkdir("./storage/temp/"+dirName,os.ModePerm)
+	dirName := act.Name + "_批量导出_" + MD5_short(fmt.Sprintf("%d%d", act.ActID, time.Now().UnixNano()))
+	err = os.Mkdir("./storage/temp/"+dirName, os.ModePerm)
 	if err != nil {
-		Logger.Error.Println("[管理员导出数据]创建目录失败：",err)
-		returnErrorJson(c,"系统异常(-1)")
+		Logger.Error.Println("[管理员导出数据]创建目录失败：", err)
+		returnErrorJson(c, "系统异常(-1)")
 		return
 	}
 
 	errCnt := 0
-	for i := range files{
+	for i := range files {
 		fileName := files[i].FileName + fileExt[files[i].ContentType]
-		if e,_ := FsExists(fmt.Sprintf("./storage/temp/%s/%s",dirName,fileName));e!=false{
-			fileName = fmt.Sprintf("%s_%s%s",files[i].FileName,MD5_short(fmt.Sprintf("%d",time.Now().UnixNano())),fileExt[files[i].ContentType])
+		if e, _ := FsExists(fmt.Sprintf("./storage/temp/%s/%s", dirName, fileName)); e != false {
+			fileName = fmt.Sprintf("%s_%s%s", files[i].FileName, MD5_short(fmt.Sprintf("%d", time.Now().UnixNano())), fileExt[files[i].ContentType])
 		}
-		err = cosDownload(files[i].Remote,fmt.Sprintf("./storage/temp/%s/%s",dirName,fileName))
+		err = cosDownload(files[i].Remote, fmt.Sprintf("./storage/temp/%s/%s", dirName, fileName))
 		if err != nil {
-			Logger.Error.Printf("[管理员导出数据]下载文件失败：%s --> %s : err:%s\n",files[i].Remote,fileName,err)
+			Logger.Error.Printf("[管理员导出数据]下载文件失败：%s --> %s : err:%s\n", files[i].Remote, fileName, err)
 			errCnt++
 		}
 	}
 
-	f,err := os.Open("./storage/temp/"+dirName)
+	f, err := os.Open("./storage/temp/" + dirName)
 	if err != nil {
-		Logger.Error.Println("[管理员导出数据]打开目录失败：",err)
-		returnErrorJson(c,"系统异常(-2)")
+		Logger.Error.Println("[管理员导出数据]打开目录失败：", err)
+		returnErrorJson(c, "系统异常(-2)")
 		return
 	}
 	var fs = []*os.File{f}
-	err = Compress(fs,"./storage/export/"+dirName+".zip")
+	err = Compress(fs, "./storage/export/"+dirName+".zip")
 	if err != nil {
-		Logger.Error.Println("[管理员导出数据]压缩失败：",err)
-		returnErrorJson(c,"系统异常(-3)")
+		Logger.Error.Println("[管理员导出数据]压缩失败：", err)
+		returnErrorJson(c, "系统异常(-3)")
 		return
 	}
 
 	cleanTime := 5
-	if config.General.Production == false{
+	if config.General.Production == false {
 		cleanTime = 1
 	}
-	go trashCleaner("./storage/temp/"+dirName,0)
-	go trashCleaner("./storage/export/"+dirName+".zip",cleanTime)
+	go trashCleaner("./storage/temp/"+dirName, 0)
+	go trashCleaner("./storage/export/"+dirName+".zip", cleanTime)
 
 	res := new(ResAdminActExport)
 	res.Status = 0
-	res.Data.DownloadUrl = config.General.BaseUrl+"/export/"+dirName+".zip"
-	c.JSON(200,res)
+	res.Data.DownloadUrl = config.General.BaseUrl + "/export/" + dirName + ".zip"
+	c.JSON(200, res)
 }

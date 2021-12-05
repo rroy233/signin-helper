@@ -20,11 +20,13 @@ var nextDateUnix int64
 var waitTime time.Duration
 
 var logFile *os.File
+var ProductionMode bool
 
 // New 主程序启动时需要调用这个函数来初始化
-func New() {
+func New(production bool) {
 	nextDate = ""
 	nextDateUnix = 0
+	ProductionMode = production
 
 	setNewLogger()
 	go watcher()
@@ -65,7 +67,11 @@ func setNewLogger() {
 
 	//重新定义
 	Debug = log.New(io.MultiWriter(os.Stderr), "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
-	Info = log.New(io.MultiWriter(logFile, os.Stderr), "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	if ProductionMode == true {
+		Info = log.New(io.MultiWriter(logFile), "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	} else {
+		Info = log.New(io.MultiWriter(logFile, os.Stderr), "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	}
 	Error = log.New(io.MultiWriter(logFile, os.Stderr), "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	FATAL = log.New(io.MultiWriter(logFile, os.Stderr), "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
