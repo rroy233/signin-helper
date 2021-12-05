@@ -21,10 +21,16 @@ type FileOptions struct {
 }
 
 var fileExt = map[string]string{
-	"image/png":".png",
-	"image/jpeg":".jpg",
-	"application/zip":".zip",
-	"application/x-rar-compressed":".rar",
+	"image/png":                    ".png",
+	"image/jpeg":                   ".jpg",
+	"application/zip":              ".zip",
+	"application/x-rar-compressed": ".rar",
+	"application/msword":           ".doc",
+	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+	"application/vnd.ms-excel": ".xls",
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
+	"application/vnd.ms-powerpoint":                                             ".ppt",
+	"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
 }
 
 func cosClientUpdate() {
@@ -60,23 +66,23 @@ func cosFileDel(objKey string) error {
 	return err
 }
 
-func cosUpload(localAddr string, fileName string) (ObjectKey string,err error) {
+func cosUpload(localAddr string, fileName string) (ObjectKey string, err error) {
 	_, err = os.Open(localAddr)
 	if err != nil {
 		Logger.Info.Println("[COS]尝试上传本地文件时，打开本地文件失败:", err)
-		return "",err
+		return "", err
 	}
 
-	upRes, _, err := cosClient.Object.Upload(context.Background(), config.Cos.BasePath + "/upload/"+fileName, localAddr,nil)
-	if err != nil || upRes == nil{
+	upRes, _, err := cosClient.Object.Upload(context.Background(), config.Cos.BasePath+"/upload/"+fileName, localAddr, nil)
+	if err != nil || upRes == nil {
 		Logger.Error.Println("[COS]尝试上传本地文件时失败:", err)
 		return "", err
 	}
 	Logger.Info.Printf("[COS]上传文件成功:%s->%s\n", localAddr, upRes.Key)
-	return upRes.Key,err
+	return upRes.Key, err
 }
 
-func cosDownload(objKey string,dest string) error{
+func cosDownload(objKey string, dest string) error {
 	opt := &cos.MultiDownloadOptions{
 		ThreadPoolSize: 5,
 	}
@@ -86,15 +92,15 @@ func cosDownload(objKey string,dest string) error{
 	return err
 }
 
-func cosGetUrl(objKey string,expTime time.Duration) (imgUrl string,err error) {
+func cosGetUrl(objKey string, expTime time.Duration) (imgUrl string, err error) {
 	var tmp *url.URL
-	tmp,err = cosClient.Object.GetPresignedURL(ctx,"GET", objKey,config.Cos.SecretID,config.Cos.SecretKey,expTime,nil)
+	tmp, err = cosClient.Object.GetPresignedURL(ctx, "GET", objKey, config.Cos.SecretID, config.Cos.SecretKey, expTime, nil)
 	if err != nil {
-		Logger.Error.Println("[COS]获取签名url失败:",err.Error())
+		Logger.Error.Println("[COS]获取签名url失败:", err.Error())
 		return
 	}
 	imgUrl = tmp.String()
-	Logger.Info.Println("[COS]生成签名URL成功:",tmp.String())
+	Logger.Info.Println("[COS]生成签名URL成功:", tmp.String())
 	return
 }
 

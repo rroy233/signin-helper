@@ -1,0 +1,1 @@
+ALTER TABLE `activity` CHANGE `file_opts` `file_opts` VARCHAR(1000) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT '' COMMENT '文件选项';
