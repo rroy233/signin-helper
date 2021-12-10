@@ -134,6 +134,10 @@ func adminActInfoHandler(c *gin.Context) {
 				res.Data.Upload.Type = append(res.Data.Upload.Type, "excel")
 				continue
 			}
+			if strings.Contains(opts.AllowContentType[i], "pdf") {
+				res.Data.Upload.Type = append(res.Data.Upload.Type, "pdf")
+				continue
+			}
 		}
 		res.Data.Upload.Rename = opts.Rename
 		res.Data.Upload.MaxSize = opts.MaxSize
@@ -235,6 +239,10 @@ func adminActNewHandler(c *gin.Context) {
 			if form.Upload.Type[i] == "excel" {
 				opts.AllowContentType = append(opts.AllowContentType, "application/vnd.ms-excel")
 				opts.AllowContentType = append(opts.AllowContentType, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+				continue
+			}
+			if form.Upload.Type[i] == "pdf" {
+				opts.AllowContentType = append(opts.AllowContentType, "application/pdf")
 				continue
 			}
 			returnErrorJson(c, "文件类型无效")

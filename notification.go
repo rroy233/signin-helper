@@ -54,6 +54,9 @@ func initMail() {
 
 //新活动通知，群发给班级的所有成员
 func newActBulkSend(classID int, act *dbAct) error {
+	if config.General.Production == false{
+		return nil
+	}
 	class, err := getClass(classID)
 	if err != nil {
 		return err
