@@ -200,6 +200,15 @@ type ResAdminActExport struct {
 	} `json:"data"`
 }
 
+type ResAdminActViewFile struct {
+	Res
+	Data struct{
+		Type string `json:"type"`
+		ImgUrl string `json:"img_url"`
+		DownloadUrl string `json:"download_url"`
+	}`json:"data"`
+}
+
 //自定义数据结构
 type actStatisticUser struct {
 	Id   int    `json:"id"`

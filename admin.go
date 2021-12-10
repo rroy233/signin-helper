@@ -46,6 +46,11 @@ type FormDataAdminActExport struct {
 	ActID int `json:"act_id" binding:"required"`
 }
 
+type FormDataAdminActViewFile struct {
+	UserID int `json:"user_id" binding:"required"`
+	ActID int `json:"act_id" binding:"required"`
+}
+
 func adminActInfoHandler(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {
@@ -790,5 +795,87 @@ func AdminActExportHandler(c *gin.Context) {
 	res := new(ResAdminActExport)
 	res.Status = 0
 	res.Data.DownloadUrl = config.General.BaseUrl + "/export/" + dirName + ".zip"
+	Logger.Info.Println("[管理员导出数据]操作者：", auth)
 	c.JSON(200, res)
+}
+
+func AdminActViewFileHandler(c *gin.Context){
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	form := new(FormDataAdminActViewFile)
+	err = c.ShouldBindJSON(form)
+	if err != nil {
+		returnErrorJson(c, "参数无效(-1)")
+		return
+	}
+
+	//获取用户
+	user := new(dbUser)
+	err = db.Get(user,"select * from `user` where `user_id`=?",form.UserID)
+	if err != nil {
+		Logger.Error.Println("[管理员查看用户文件]查询用户信息失败：",err)
+		returnErrorJson(c, "系统异常(-1)")
+		return
+	}
+	if user.UserID == 0{
+		returnErrorJson(c, "参数无效(-2)")
+		return
+	}
+
+	//获取活动
+	act,err := getAct(form.ActID)
+	if err != nil {
+		Logger.Error.Println("[管理员查看用户文件]查询活动信息失败：",err)
+		returnErrorJson(c, "参数无效(-3)")
+		return
+	}
+
+	//判断是否有权限
+	if user.Class != auth.ClassId || act.ClassID != auth.ClassId{
+		returnErrorJson(c, "无权限查看")
+		return
+	}
+
+	//判断是否满足条件
+	if act.Type != ACT_TYPE_UPLOAD{
+		returnErrorJson(c, "无权限查看")
+		return
+	}
+	//查询记录
+	logItem := new(dbLog)
+	err = db.Get(logItem,"select * from `signin_log` where `user_id`=? and `act_id`=?",form.UserID,form.ActID)
+	if err != nil || logItem.FileID==0{
+		Logger.Error.Println("[管理员查看用户文件]查询签到记录失败：",err)
+		returnErrorJson(c, "未查询到此用户的参与记录")
+		return
+	}
+	//查询文件
+	fileItem := new(dbFile)
+	err = db.Get(fileItem,"select * from `file` where `file_id`=?",logItem.FileID)
+	if err != nil {
+		Logger.Error.Println("[管理员查看用户文件]查询文件信息失败：",err)
+		returnErrorJson(c, "查询文件信息失败")
+		return
+	}
+
+	res := new(ResAdminActViewFile)
+	res.Status = 0
+	res.Data.Type = "other"
+	if strings.Contains(fileItem.ContentType,"image")==true{
+		res.Data.Type = "image"
+		res.Data.ImgUrl,err = cosGetUrl(fileItem.Remote,5*time.Minute)
+	}else{
+		res.Data.DownloadUrl,err = cosGetUrl(fileItem.Remote,5*time.Minute)
+	}
+	if err != nil {
+		Logger.Error.Println("[管理员查看用户文件]签发url失败：",err)
+		returnErrorJson(c, "文件签名失败")
+		return
+	}
+
+	c.JSON(200,res)
 }
