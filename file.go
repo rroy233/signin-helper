@@ -31,6 +31,7 @@ var fileExt = map[string]string{
 	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
 	"application/vnd.ms-powerpoint":                                             ".ppt",
 	"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+	"application/pdf":".pdf",
 }
 
 func cosClientUpdate() {
