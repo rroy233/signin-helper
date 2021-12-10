@@ -401,7 +401,16 @@ v1.x版本
 * resp -> resAdminActExport
   * download_url
 
+### 3.11 /api/admin/act/viewFile 查看用户文件
 
+* post
+* data -> formDataAdminViewFile
+  * user_id
+* resp -> resAdminActViewFile
+  * type
+    * string
+  * img_url
+  * download_url
 
 ## 4. JWT 结构
 

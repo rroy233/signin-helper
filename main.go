@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"log"
 	"signin/Logger"
 	sso "signin/SSO"
 	"time"
@@ -35,6 +36,7 @@ func main() {
 
 	ssoClient = sso.NewClient(config.General.Production, config.SSO.ServiceName, config.SSO.ClientId, config.SSO.ClientSecret)
 
+	log.Println("[系统]已启动")
 	err := router.Run(":" + config.General.ListenPort)
 	if err != nil {
 		Logger.FATAL.Fatalln(err)

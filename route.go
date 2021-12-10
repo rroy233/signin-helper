@@ -81,6 +81,7 @@ func init() {
 		adminApiGroup.GET("/act/list", adminActListHandler)
 		adminApiGroup.GET("/act/statistic", adminActStatisticHandler)
 		adminApiGroup.POST("/act/export", AdminActExportHandler)
+		adminApiGroup.POST("/act/viewFile", AdminActViewFileHandler)
 		adminApiGroup.GET("/class/info", adminClassInfoHandler)
 		adminApiGroup.POST("/class/edit", adminClassEditHandler)
 
