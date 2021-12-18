@@ -468,7 +468,7 @@ func UserActUploadHandler(c *gin.Context) {
 	}
 	ext := ""
 	for i := range opts.AllowContentType {
-		if opts.AllowContentType[i] == file.Header.Values("Content-Type")[0] {
+		if len(file.Header.Values("Content-Type"))==1 && opts.AllowContentType[i] == file.Header.Values("Content-Type")[0] {
 			ext = fileExt[file.Header.Values("Content-Type")[0]]
 		}
 	}

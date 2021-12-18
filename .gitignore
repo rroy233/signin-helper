@@ -5,3 +5,4 @@ config.yaml
 *.http
 views/dist/*
 storage/export/*.zip
+*.0
