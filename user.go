@@ -451,7 +451,12 @@ func UserActUploadHandler(c *gin.Context) {
 		return
 	}
 
-	file, _ := c.FormFile("file")
+	file, err := c.FormFile("file")
+	if err != nil {
+		Logger.Error.Println("[文件上传]文件装载失败", err)
+		returnErrorJson(c, fmt.Sprintf("文件上传失败(%s)",err.Error()))
+		return
+	}
 	Logger.Info.Println("[文件上传]文件元数据：",file.Header," 用户:",auth.Name)
 
 	//获取活动对文件的要求
