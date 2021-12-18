@@ -414,7 +414,7 @@ func UserActUploadHandler(c *gin.Context) {
 	//查询正在生效的活动id
 	ActiveActIDs, err := getActIDs(auth.ClassId)
 	if err != nil {
-		Logger.Error.Println("[签到]活动id查找失败", err, auth)
+		Logger.Error.Println("[文件上传]活动id查找失败", err, auth)
 		returnErrorJson(c, "系统异常(-1)")
 		return
 	}
@@ -422,14 +422,14 @@ func UserActUploadHandler(c *gin.Context) {
 	//从redis查找活动id
 	actID, err := queryActIdByActToken(actToken)
 	if err != nil {
-		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
+		Logger.Info.Println("[文件上传]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")
 		return
 	}
 
 	//判断是否正在生效
 	if existIn(ActiveActIDs, actID) == false {
-		Logger.Info.Println("[签到]从redis查找活动，活动已失效", auth)
+		Logger.Info.Println("[文件上传]从redis查找活动，活动已失效", auth)
 		returnErrorJson(c, "当前活动已过期")
 		return
 	}
@@ -439,30 +439,31 @@ func UserActUploadHandler(c *gin.Context) {
 		auth.UserID,
 		actID)
 	if tmp > 0 {
-		Logger.Info.Println("[签到]重复参与", err, auth)
+		Logger.Info.Println("[文件上传]重复参与", err, auth)
 		returnErrorJson(c, "")
 		return
 	}
 
 	act, err := getAct(actID)
 	if err != nil {
-		Logger.Error.Println("[签到]查询活动信息失败", err)
+		Logger.Error.Println("[文件上传]查询活动信息失败", err)
 		returnErrorJson(c, "查询活动信息失败")
 		return
 	}
 
 	file, _ := c.FormFile("file")
+	Logger.Info.Println("[文件上传]文件元数据：",file.Header," 用户:",auth.Name)
 
 	//获取活动对文件的要求
 	if act.FileOpts == "" {
-		Logger.Error.Println("[签到]管理员配置文件上传要求错误")
+		Logger.Error.Println("[文件上传]管理员配置文件上传要求错误")
 		returnErrorJson(c, "管理员配置文件上传要求错误")
 		return
 	}
 	opts := new(FileOptions)
 	err = json.Unmarshal([]byte(act.FileOpts), opts)
 	if err != nil {
-		Logger.Error.Println("[签到]解码活动对文件的要求失败", err)
+		Logger.Error.Println("[文件上传]解码活动对文件的要求失败", err)
 		returnErrorJson(c, "解码活动对文件的要求失败")
 		return
 	}
