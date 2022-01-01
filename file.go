@@ -3,12 +3,15 @@ package main
 import (
 	"archive/zip"
 	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/tencentyun/cos-go-sdk-v5"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"signin/Logger"
+	"strings"
 	"time"
 )
 
@@ -31,7 +34,7 @@ var fileExt = map[string]string{
 	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         ".xlsx",
 	"application/vnd.ms-powerpoint":                                             ".ppt",
 	"application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
-	"application/pdf":".pdf",
+	"application/pdf": ".pdf",
 }
 
 func cosClientUpdate() {
@@ -100,8 +103,14 @@ func cosGetUrl(objKey string, expTime time.Duration) (imgUrl string, err error) 
 		Logger.Error.Println("[COS]获取签名url失败:", err.Error())
 		return
 	}
-	imgUrl = tmp.String()
 	Logger.Info.Println("[COS]生成签名URL成功:", tmp.String())
+
+	fileToken, err := Cipher.Encrypt([]byte(tmp.String()))
+	if err != nil {
+		Logger.Error.Println("[COS]生成代理url失败:", err.Error())
+		return
+	}
+	imgUrl = config.General.BaseUrl + "/file/" + fileToken + "." + MD5(fileToken+config.General.AESKey)
 	return
 }
 
@@ -172,4 +181,60 @@ func FsExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func fileHandler(c *gin.Context) {
+	p := c.Param("data")
+
+	//校验
+	data := strings.Split(p, ".")
+	if len(data) != 2 {
+		returnErrorText(c, 403, "参数无效")
+		return
+	}
+	if data[1] != MD5(data[0]+config.General.AESKey) {
+		returnErrorText(c, 403, "链接无效")
+		return
+	}
+
+	dc, err := Cipher.Decrypt(data[0])
+	if err != nil {
+		returnErrorText(c, 403, "链接无效")
+		return
+	}
+	resp, err := http.Get(dc)
+	if err != nil {
+		c.Status(resp.StatusCode)
+		Logger.Info.Printf("[文件代理]请求错误：code[%d]，header[%v]", resp.StatusCode, resp.Header)
+		return
+	}
+
+	//连接过期
+	if resp.StatusCode != 200 {
+		returnErrorText(c, 410, "链接已过期")
+		return
+	}
+
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	//附件
+	if strings.Contains(resp.Header.Get("content-type"), "image") != true {
+		urlData, err := url.Parse(dc)
+		if err != nil {
+			returnErrorText(c, 500, "文件解析失败")
+			Logger.Error.Println("[文件代理]文件解析失败:", err)
+			return
+		}
+		c.Header("content-type", resp.Header.Get("content-type"))
+		//获取文件名
+		pathData := strings.Split(urlData.Path, "/")
+		fileName := "file"
+		if len(pathData) != 0 {
+			fileName = pathData[len(pathData)-1]
+		}
+		c.Header("Content-Disposition", "attachment;filename="+fileName)
+	}
+
+	c.Data(200, resp.Header.Get("content-type"), body)
+
 }

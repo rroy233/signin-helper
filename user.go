@@ -326,7 +326,6 @@ func UserActInfoHandler(c *gin.Context) {
 					if strings.Contains(myFile.ContentType, "image") == true {
 						actItem.Upload.Type = "image"
 						actItem.Upload.ImgUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute)
-						actItem.Upload.ImgUrl += "&imageMogr2/format/jpg/interlace/0/quality/36"
 					} else {
 						actItem.Upload.Type = "other"
 						actItem.Upload.DownloadUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute)
@@ -454,10 +453,10 @@ func UserActUploadHandler(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		Logger.Error.Println("[文件上传]文件装载失败", err)
-		returnErrorJson(c, fmt.Sprintf("文件上传失败(%s)",err.Error()))
+		returnErrorJson(c, fmt.Sprintf("文件上传失败(%s)", err.Error()))
 		return
 	}
-	Logger.Info.Println("[文件上传]文件元数据：",file.Header," 用户:",auth.Name)
+	Logger.Info.Println("[文件上传]文件元数据：", file.Header, " 用户:", auth.Name)
 
 	//获取活动对文件的要求
 	if act.FileOpts == "" {
@@ -474,7 +473,7 @@ func UserActUploadHandler(c *gin.Context) {
 	}
 	ext := ""
 	for i := range opts.AllowContentType {
-		if len(file.Header.Values("Content-Type"))==1 && opts.AllowContentType[i] == file.Header.Values("Content-Type")[0] {
+		if len(file.Header.Values("Content-Type")) == 1 && opts.AllowContentType[i] == file.Header.Values("Content-Type")[0] {
 			ext = fileExt[file.Header.Values("Content-Type")[0]]
 		}
 	}

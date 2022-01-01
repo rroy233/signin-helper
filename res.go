@@ -202,11 +202,11 @@ type ResAdminActExport struct {
 
 type ResAdminActViewFile struct {
 	Res
-	Data struct{
-		Type string `json:"type"`
-		ImgUrl string `json:"img_url"`
+	Data struct {
+		Type        string `json:"type"`
+		ImgUrl      string `json:"img_url"`
 		DownloadUrl string `json:"download_url"`
-	}`json:"data"`
+	} `json:"data"`
 }
 
 //自定义数据结构
@@ -303,4 +303,8 @@ func returnErrorJson(c *gin.Context, text string) {
 
 func returnErrorView(c *gin.Context, text string) {
 	c.Data(200, ContentTypeHTML, views("error1", map[string]string{"text": text}))
+}
+
+func returnErrorText(c *gin.Context, code int, text string) {
+	c.Data(code, "text/plain; charset=UTF-8", []byte(text))
 }

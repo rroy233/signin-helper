@@ -47,6 +47,7 @@ func init() {
 	router.GET("/api/login", loginHandler)
 	router.POST("/api/logout", logoutHandler)
 	router.POST("/api/wxpusherCallback", wxpusherCallbackHandler)
+	router.GET("/file/:data", fileHandler)
 
 	//用户api
 	userApiGroup := router.Group("/api/user")
