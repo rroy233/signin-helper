@@ -103,7 +103,6 @@ func cosGetUrl(objKey string, expTime time.Duration) (imgUrl string, err error) 
 		Logger.Error.Println("[COS]获取签名url失败:", err.Error())
 		return
 	}
-	Logger.Info.Println("[COS]生成签名URL成功:", tmp.String())
 
 	fileToken, err := Cipher.Encrypt([]byte(tmp.String()))
 	if err != nil {

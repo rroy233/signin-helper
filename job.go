@@ -22,6 +22,15 @@ func initJob() {
 		_, err = crontab.AddFunc("18 13 * * ?", SendDailyNotification)
 	}
 
+	//清除已过期文件
+	//每天凌晨1点
+	_, err = crontab.AddFunc("0 0 * * ?", CleanExpiredFiles)
+	if err != nil {
+		Logger.FATAL.Fatalln("[定时任务][异常]添加CleanExpiredFiles失败:", err)
+	} else {
+		Logger.Info.Println("[定时任务][成功]添加CleanExpiredFiles成功")
+	}
+
 	//数据准备
 	//每天12:29+18:29
 	_, err = crontab.AddFunc("29 12 * * ?", PrepareDailyNotification)
@@ -227,6 +236,40 @@ func SendDailyNotification() {
 		Logger.Info.Println("[定时任务][发送][", i+1, "/", total, "]发送成功")
 	}
 	rdb.Del(ctx, "SIGNIN_APP:NOTI_LIST")
+}
+
+func CleanExpiredFiles() {
+	nowTS := time.Now().Unix()
+	files := make([]dbFile, 0)
+	err := db.Select(&files, "select * from `file` where `status`=?", FILE_STATUS_REMOTE)
+	if err != nil {
+		Logger.Error.Println("[清理过期文件][失败] - 从db获取文件失败：", err)
+		return
+	}
+	for i := range files {
+		expTime, err := strconv.ParseInt(files[i].ExpTime, 10, 64)
+		if err != nil {
+			Logger.Error.Printf("[清理过期文件][失败] - 文件[%s]exp_time转换失败：%s", files[i].FileName, err.Error())
+			continue
+		}
+		if expTime > nowTS { //未过期
+			continue
+		}
+
+		//删除远端文件
+		err = cosFileDel(files[i].Remote)
+		if err != nil {
+			Logger.Error.Printf("[清理过期文件][失败] - 文件[%s]删除失败：%s", files[i].FileName, err.Error())
+			continue
+		}
+		//更新数据库
+		_, err = db.Exec("update `file` set `status` = ? where `file_id`=?", FILE_STATUS_DELETED, files[i].FileID)
+		if err != nil {
+			Logger.Error.Printf("[清理过期文件][失败] - [%s]数据库更新失败：%s", files[i].FileName, err.Error())
+			continue
+		}
+		Logger.Info.Printf("[清理过期文件][成功] - 已成功删除%s", files[i].FileName)
+	}
 }
 
 //随机选取发送模板
