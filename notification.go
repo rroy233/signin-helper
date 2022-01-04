@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/smtp"
 	"signin/Logger"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,7 +55,7 @@ func initMail() {
 
 //新活动通知，群发给班级的所有成员
 func newActBulkSend(classID int, act *dbAct) error {
-	if config.General.Production == false{
+	if config.General.Production == false {
 		return nil
 	}
 	class, err := getClass(classID)
@@ -366,4 +367,30 @@ func makeInnerNoti(userID int) (*UserNotiFetchItem, error) {
 		return nil, err
 	}
 	return item, nil
+}
+
+//获取用户特定活动已提醒次数
+func actNotiUserTimesGet(ActID int, userID int) (int, error) {
+	tmp, err := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", ActID, userID)).Result()
+	if err != nil {
+		return 0, err
+	}
+	data, _ := strconv.Atoi(tmp)
+	return data, nil
+}
+
+//存储用户特定活动已提醒次数
+func actNotiUserTimesIncr(act *dbAct, userID int) (err error) {
+	if rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID)).Val() == "" {
+		err = rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID), 0, 30*24*time.Hour).Err()
+	} else {
+		err = rdb.Incr(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID)).Err()
+	}
+	return err
+}
+
+//删除用户特定活动已提醒次数
+func actNotiUserTimesDel(ActID int, userID int) error {
+	err := rdb.Del(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", ActID, userID)).Err()
+	return err
 }

@@ -330,6 +330,8 @@ func UserActInfoHandler(c *gin.Context) {
 						actItem.Upload.Type = "other"
 						actItem.Upload.DownloadUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute)
 					}
+				} else if myFile.Status == FILE_STATUS_DELETED {
+					actItem.Upload.Enabled = false
 				}
 
 				if err != nil { //上方一旦出现错误
@@ -638,24 +640,6 @@ func UserActSigninHandler(c *gin.Context) {
 		Logger.Info.Println("[签到]写入log表失败", err, auth)
 		returnErrorJson(c, "系统异常，请联系管理员")
 		return
-	}
-
-	//检查提醒次数，判断是否需要推送提醒
-	notiTimes, err := actNotiUserTimesGet(act, auth.UserID)
-	if err == nil {
-		//成功获取
-		if notiTimes > 6 {
-			noti, err := makeActInnerNoti(actID, auth.UserID, ACT_NOTI_TYPE_CH_NOTI)
-			err = pushInnerNoti(auth.UserID, noti)
-			if err != nil {
-				Logger.Error.Println("[签到][检查提醒次数]推送消息失败:", err)
-			} else {
-				err = actNotiUserTimesDel(act, auth.UserID)
-				if err != nil {
-					Logger.Error.Println("[签到][检查提醒次数]删除提醒次数失败:", err)
-				}
-			}
-		}
 	}
 
 	res := new(ResUserSignIn)
@@ -978,6 +962,42 @@ func UserNotiFetchHandler(c *gin.Context) {
 	if err != nil {
 		returnErrorJson(c, "登录状态无效")
 		return
+	}
+
+	//提醒次数回收
+	notiKeys := rdb.Keys(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:*:%d", auth.UserID)).Val()
+	if len(notiKeys) != 0 {
+		ids, _ := getActIDs(auth.ClassId)
+		for i := range notiKeys {
+			actID, _ := strconv.Atoi(strings.Split(notiKeys[i], ":")[2])
+			if actID == 0 {
+				continue
+			}
+			if existIn(ids, actID) != true {
+				//已过期，立即推送
+				noti, _ := makeActInnerNoti(actID, auth.UserID, ACT_NOTI_TYPE_CH_NOTI)
+				err = pushInnerNoti(auth.UserID, noti)
+			} else {
+				//检查提醒次数，判断是否需要推送提醒
+				notiTimes, err := actNotiUserTimesGet(actID, auth.UserID)
+				if err == nil {
+					//成功获取
+					if notiTimes < 6 {
+						continue
+					} else {
+						noti, err := makeActInnerNoti(actID, auth.UserID, ACT_NOTI_TYPE_CH_NOTI)
+						err = pushInnerNoti(auth.UserID, noti)
+						if err != nil {
+							Logger.Error.Println("[拉取用户消息][检查提醒次数]推送消息失败:", err)
+						}
+					}
+				}
+			}
+			err = actNotiUserTimesDel(actID, auth.UserID)
+			if err != nil {
+				Logger.Error.Println("[拉取用户消息][检查提醒次数]删除提醒次数失败:", err)
+			}
+		}
 	}
 
 	//SIGNIN_APP:UserNoti:USER_{{USER_ID}}:{{noti_token}}
