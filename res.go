@@ -209,6 +209,13 @@ type ResAdminActViewFile struct {
 	} `json:"data"`
 }
 
+type ResAdminActGetRandomPic struct {
+	Res
+	Data struct {
+		Url string `json:"url"`
+	} `json:"data"`
+}
+
 //自定义数据结构
 type actStatisticUser struct {
 	Id   int    `json:"id"`

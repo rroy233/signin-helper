@@ -540,6 +540,7 @@ func UserActUploadHandler(c *gin.Context) {
 	if err != nil {
 		Logger.Error.Println("[签到]文件登记失败:", err)
 		returnErrorJson(c, "文件登记失败，请联系管理员！")
+		return
 	}
 
 	//删除文件

@@ -241,7 +241,7 @@ func SendDailyNotification() {
 func CleanExpiredFiles() {
 	nowTS := time.Now().Unix()
 	files := make([]dbFile, 0)
-	err := db.Select(&files, "select * from `file` where `status`=?", FILE_STATUS_REMOTE)
+	err := db.Select(&files, "select * from `file` where `status`!=?", FILE_STATUS_DELETED)
 	if err != nil {
 		Logger.Error.Println("[清理过期文件][失败] - 从db获取文件失败：", err)
 		return
@@ -256,12 +256,21 @@ func CleanExpiredFiles() {
 			continue
 		}
 
-		//删除远端文件
-		err = cosFileDel(files[i].Remote)
-		if err != nil {
-			Logger.Error.Printf("[清理过期文件][失败] - 文件[%s]删除失败：%s", files[i].FileName, err.Error())
+		if files[i].Status == FILE_STATUS_LOCAL {
+			//删除本地文件
+			go trashCleaner(files[i].Local, 0)
+		} else if files[i].Status == FILE_STATUS_REMOTE {
+			//删除远端文件
+			err = cosFileDel(files[i].Remote)
+			if err != nil {
+				Logger.Error.Printf("[清理过期文件][失败] - 文件[%s]删除失败：%s", files[i].FileName, err.Error())
+				continue
+			}
+		} else { //异常
+			Logger.Error.Printf("[清理过期文件][失败] - 文件状态异常%s", files[i].Status)
 			continue
 		}
+
 		//更新数据库
 		_, err = db.Exec("update `file` set `status` = ? where `file_id`=?", FILE_STATUS_DELETED, files[i].FileID)
 		if err != nil {
