@@ -412,6 +412,14 @@ v1.x版本
   * img_url
   * download_url
 
+### 3.12 /api/admin/act/getRandomPic 管理员获取随机图片
+
+* pic
+* resp -> adminActGetRandomPic
+  * url
+
+
+
 ## 4. JWT 结构
 
 ### 4.1 header
@@ -580,7 +588,13 @@ v1.x版本
 
 [exp] 2min
 
+### 5.16 TempFile 临时文件
 
+[key] SIGNIN_APP:TempFile:{{tempFile_token}}
+
+[val] base64
+
+[exp] -
 
 ## 6. 自定义数据结构
 

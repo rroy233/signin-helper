@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"signin/Logger"
@@ -182,18 +185,80 @@ func adminActNewHandler(c *gin.Context) {
 			returnErrorJson(c, "图片地址无效(-1)")
 			return
 		}
-		if purl.Host != "i.loli.net" {
+
+		tmpPicToken, err := Cipher.Encrypt([]byte("redis_tempImage/" + auth.ID))
+		if err != nil {
+			Logger.Error.Println("[管理员][创建活动]获取加密字符串失败", err, auth)
+			returnErrorJson(c, "系统异常")
+			return
+		}
+		if strings.Contains(form.Pic, config.General.BaseUrl) == true && strings.Contains(form.Pic, tmpPicToken) { //随机图片
+			if rdb.Exists(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", auth.ID)).Val() != int64(1) {
+				returnErrorJson(c, "随机图片临时地址失效")
+				return
+			}
+			fileData, err := base64.StdEncoding.DecodeString(rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", auth.ID)).Val())
+			if err != nil {
+				returnErrorJson(c, "图片解码失败，请联系管理员")
+				Logger.Error.Println("[管理员][创建活动]随机图片解码失败", err, auth)
+				return
+			}
+			//暂存图片
+			fileName := fmt.Sprintf("RandomPic_USER%d_%s_%d.jpg", auth.UserID, auth.ID, time.Now().UnixNano())
+			err = ioutil.WriteFile("./storage/upload/"+fileName, fileData, 0666)
+			if err != nil {
+				returnErrorJson(c, "暂存图片文件失败，请联系管理员")
+				Logger.Error.Println("[管理员][创建活动]暂存图片文件失败", err, auth)
+				return
+			}
+			//写入file表
+			fileDB := new(dbFile)
+			fileDB.Status = FILE_STATUS_LOCAL
+			fileDB.FileName = fileName
+			fileDB.UserID = auth.UserID
+			fileDB.ActID = 0
+			fileDB.ContentType = "image/jpeg"
+			fileDB.Local = "./storage/upload/" + fileName
+			fileDB.ExpTime = strconv.FormatInt(time.Now().Add(30*24*time.Hour).Unix(), 10)
+			fileDB.UploadTime = strconv.FormatInt(time.Now().Unix(), 10)
+			_, err = db.Exec("INSERT INTO `file` (`file_id`, `status`, `user_id`, `act_id`, `file_name`, `content_type`, `local`, `remote`, `exp_time`, `upload_time`) VALUES (NULL,?, ?, ?, ?, ?, ?, ?, ?, ?);",
+				fileDB.Status,
+				fileDB.UserID,
+				fileDB.ActID,
+				fileDB.FileName,
+				fileDB.ContentType,
+				fileDB.Local,
+				fileDB.Remote,
+				fileDB.ExpTime,
+				fileDB.UploadTime,
+			)
+			if err != nil {
+				Logger.Error.Println("[管理员][创建活动]文件登记失败:", err)
+				returnErrorJson(c, "文件登记失败，请联系管理员:"+fileName)
+				return
+			}
+			//生成图片访问地址
+			fileToken, err := Cipher.Encrypt([]byte(fmt.Sprintf("local_file#%s#%s#%d", fileDB.ContentType, fileDB.Local, time.Now().UnixNano())))
+			if err != nil {
+				Logger.Error.Println("[管理员][创建活动]生成图片访问地址加密失败:", err)
+				returnErrorJson(c, "文件地址生成失败，请联系管理员:"+fileName)
+				return
+			}
+			picUrl = config.General.BaseUrl + "/file/" + fileToken + "." + MD5(fileToken+config.General.AESKey)
+		} else if purl.Host == "i.loli.net" { //图床
+			picUrl = purl.Scheme + "://" + purl.Host + "/" + purl.Path
+		} else {
 			Logger.Error.Println("[管理员][创建活动]图片地址校验", err, auth)
 			returnErrorJson(c, "图片地址无效(-2)")
 			return
 		}
-		picUrl = purl.Scheme + "://" + purl.Host + "/" + purl.Path
+
 		Logger.Info.Println("[管理员][创建活动][图片地址]", picUrl)
 	}
 
-	//字段长度校验name40 ann50 ct20 url100
-	if len(picUrl) > 100 {
-		Logger.Info.Println("[管理员][创建活动]字段长度校验", err, auth)
+	//字段长度校验name40 ann50 ct20 url500
+	if len(picUrl) > 500 {
+		Logger.Info.Println("[管理员][编辑活动信息]字段长度校验", err, auth)
 		returnErrorJson(c, "图片地址无效(-3)")
 		return
 	}
@@ -263,7 +328,6 @@ func adminActNewHandler(c *gin.Context) {
 	if form.DailyNotify == false {
 		dailyNoti = 0
 	}
-	Logger.Debug.Println(fileOpts)
 	//更新数据库activity
 	dbrt, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`,`active`,`type`, `name`, `announcement`, `cheer_text`, `pic`,`daily_noti_enabled`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`,`file_opts`) VALUES (NULL, ?, ?,?, ?,?, ?, ?, ?,?, ?, ?, ?, ?,?);",
 		auth.ClassId,
@@ -361,24 +425,86 @@ func adminActEditHandler(c *gin.Context) {
 
 	//校验图片地址
 	picUrl := ""
-	if form.Pic != "" {
+	if form.Pic != "" && form.Pic != act.Pic {
 		purl, err := url.Parse(form.Pic)
 		if err != nil {
-			Logger.Info.Println("[管理员][编辑活动信息]图片地址校验", err, auth)
+			Logger.Error.Println("[管理员][创建活动]图片地址校验", err, auth)
 			returnErrorJson(c, "图片地址无效(-1)")
 			return
 		}
-		if purl.Host != "i.loli.net" {
-			Logger.Info.Println("[管理员][编辑活动信息]图片地址校验", err, auth)
+		tmpPicToken, err := Cipher.Encrypt([]byte("redis_tempImage/" + auth.ID))
+		if err != nil {
+			Logger.Error.Println("[管理员][创建活动]获取加密字符串失败", err, auth)
+			returnErrorJson(c, "系统异常")
+			return
+		}
+
+		if strings.Contains(form.Pic, config.General.BaseUrl) == true && strings.Contains(form.Pic, tmpPicToken) { //随机图片预览地址
+			if rdb.Exists(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", auth.ID)).Val() != int64(1) {
+				returnErrorJson(c, "随机图片临时地址失效")
+				return
+			}
+			fileData, err := base64.StdEncoding.DecodeString(rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", auth.ID)).Val())
+			if err != nil {
+				returnErrorJson(c, "图片解码失败，请联系管理员")
+				Logger.Error.Println("[管理员][创建活动]随机图片解码失败", err, auth)
+				return
+			}
+			//暂存图片
+			fileName := fmt.Sprintf("RandomPic_USER%d_%s_%d.jpg", auth.UserID, auth.ID, time.Now().UnixNano())
+			err = ioutil.WriteFile("./storage/upload/"+fileName, fileData, 0666)
+			if err != nil {
+				returnErrorJson(c, "暂存图片文件失败，请联系管理员")
+				Logger.Error.Println("[管理员][创建活动]暂存图片文件失败", err, auth)
+				return
+			}
+			//写入file表
+			fileDB := new(dbFile)
+			fileDB.Status = FILE_STATUS_LOCAL
+			fileDB.FileName = fileName
+			fileDB.UserID = auth.UserID
+			fileDB.ActID = 0
+			fileDB.ContentType = "image/jpeg"
+			fileDB.Local = "./storage/upload/" + fileName
+			fileDB.ExpTime = strconv.FormatInt(time.Now().Add(90*24*time.Hour).Unix(), 10)
+			fileDB.UploadTime = strconv.FormatInt(time.Now().Unix(), 10)
+			_, err = db.Exec("INSERT INTO `file` (`file_id`, `status`, `user_id`, `act_id`, `file_name`, `content_type`, `local`, `remote`, `exp_time`, `upload_time`) VALUES (NULL,?, ?, ?, ?, ?, ?, ?, ?, ?);",
+				fileDB.Status,
+				fileDB.UserID,
+				fileDB.ActID,
+				fileDB.FileName,
+				fileDB.ContentType,
+				fileDB.Local,
+				fileDB.Remote,
+				fileDB.ExpTime,
+				fileDB.UploadTime,
+			)
+			if err != nil {
+				Logger.Error.Println("[管理员][创建活动]文件登记失败:", err)
+				returnErrorJson(c, "文件登记失败，请联系管理员:"+fileName)
+				return
+			}
+			//生成图片访问地址
+			fileToken, err := Cipher.Encrypt([]byte(fmt.Sprintf("local_file#%s#%s#%d", fileDB.ContentType, fileDB.Local, time.Now().UnixNano())))
+			if err != nil {
+				Logger.Error.Println("[管理员][创建活动]生成图片访问地址加密失败:", err)
+				returnErrorJson(c, "文件地址生成失败，请联系管理员:"+fileName)
+				return
+			}
+			picUrl = config.General.BaseUrl + "/file/" + fileToken + "." + MD5(fileToken+config.General.AESKey)
+			rdb.Del(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", auth.ID))
+		} else if purl.Host == "i.loli.net" { //图床
+			picUrl = purl.Scheme + "://" + purl.Host + "/" + purl.Path
+		} else {
+			Logger.Error.Println("[管理员][创建活动]图片地址校验", err, auth)
 			returnErrorJson(c, "图片地址无效(-2)")
 			return
 		}
-		picUrl = purl.Scheme + "://" + purl.Host + "/" + purl.Path
-		Logger.Debug.Println("[图片地址]", picUrl)
+		Logger.Info.Println("[管理员][创建活动][图片地址]", picUrl)
 	}
 
-	//字段长度校验name40 ann50 ct20 url100
-	if len(picUrl) > 100 {
+	//字段长度校验name40 ann50 ct20 url500
+	if len(picUrl) > 500 {
 		Logger.Info.Println("[管理员][编辑活动信息]字段长度校验", err, auth)
 		returnErrorJson(c, "图片地址无效(-3)")
 		return
@@ -888,6 +1014,74 @@ func AdminActViewFileHandler(c *gin.Context) {
 		returnErrorJson(c, "文件签名失败")
 		return
 	}
+
+	c.JSON(200, res)
+}
+
+func AdminActRandomPicHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	req, err := http.NewRequest("GET", "https://pximg.rainchan.win/img", nil)
+	if err != nil {
+		returnErrorJson(c, "接口异常")
+		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 新建请求异常：", err)
+		return
+	}
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Sec-Ch-Ua", "\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"96\", \"Google Chrome\";v=\"96\"")
+	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
+	req.Header.Set("Sec-Ch-Ua-Platform", "\"macOS\"")
+	req.Header.Set("Dnt", "1")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-User", "?1")
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7,zh-TW;q=0.6")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		// handle err
+		returnErrorJson(c, "接口异常")
+		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 异常：", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		returnErrorJson(c, "接口异常")
+		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 异常：", err, resp.Header)
+		return
+	}
+
+	imageData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		returnErrorJson(c, "接口异常")
+		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 读取body异常：", err)
+		return
+	}
+
+	rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", auth.ID), base64.StdEncoding.EncodeToString(imageData), 10*time.Minute)
+
+	originUrl := "redis_tempImage/" + auth.ID
+
+	//获取代理地址
+	fileToken, err := Cipher.Encrypt([]byte(originUrl))
+	if err != nil {
+		Logger.Error.Println("[COS]生成代理url失败:", err.Error())
+		return
+	}
+	imgUrl := config.General.BaseUrl + "/file/" + fileToken + "." + MD5(fileToken+config.General.AESKey) + fmt.Sprintf("?ts=%d", time.Now().Unix())
+
+	res := new(ResAdminActGetRandomPic)
+	res.Status = 0
+	res.Data.Url = imgUrl
 
 	c.JSON(200, res)
 }

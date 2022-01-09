@@ -3,6 +3,8 @@ package main
 import (
 	"archive/zip"
 	"context"
+	"encoding/base64"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/tencentyun/cos-go-sdk-v5"
 	"io"
@@ -201,39 +203,72 @@ func fileHandler(c *gin.Context) {
 		returnErrorText(c, 403, "链接无效")
 		return
 	}
-	resp, err := http.Get(dc)
-	if err != nil {
-		c.Status(resp.StatusCode)
-		Logger.Info.Printf("[文件代理]请求错误：code[%d]，header[%v]", resp.StatusCode, resp.Header)
-		return
-	}
 
-	//连接过期
-	if resp.StatusCode != 200 {
-		returnErrorText(c, 410, "链接已过期")
-		return
-	}
-
-	body, _ := ioutil.ReadAll(resp.Body)
-
-	//附件
-	if strings.Contains(resp.Header.Get("content-type"), "image") != true {
-		urlData, err := url.Parse(dc)
+	/*协议
+	redis_tempImage/*  => 从redis提取
+	local_file#*       => 本地文件
+	其他                => 使用http.get获取
+	*/
+	if strings.Contains(dc, "redis_tempImage/") == true { //从redis提取
+		tmpImageToken := strings.Split(dc, "/")[1]
+		rdbData, err := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", tmpImageToken)).Result()
 		if err != nil {
-			returnErrorText(c, 500, "文件解析失败")
-			Logger.Error.Println("[文件代理]文件解析失败:", err)
+			c.Status(404)
+			Logger.Info.Printf("[文件代理] 从redis提取 - 读取rdb失败：%s", err.Error())
 			return
 		}
-		c.Header("content-type", resp.Header.Get("content-type"))
-		//获取文件名
-		pathData := strings.Split(urlData.Path, "/")
-		fileName := "file"
-		if len(pathData) != 0 {
-			fileName = pathData[len(pathData)-1]
+		fileData, err := base64.StdEncoding.DecodeString(rdbData)
+		if err != nil {
+			c.Status(404)
+			Logger.Info.Printf("[文件代理] 从redis提取 - base64解码失败：%s", err.Error())
+			return
 		}
-		c.Header("Content-Disposition", "attachment;filename="+fileName)
-	}
+		c.Data(200, "image/jpeg", fileData)
+	} else if strings.Contains(dc, "local_file#") == true {
+		fileContentType := strings.Split(dc, "#")[1]
+		LocalFile := strings.Split(dc, "#")[2]
+		fileData, err := ioutil.ReadFile(LocalFile)
+		if err != nil {
+			c.Status(404)
+			Logger.Info.Printf("[文件代理] 从本地读取 - readFile失败：%s", err.Error())
+			return
+		}
+		c.Data(200, fileContentType, fileData)
+	} else { //使用http.get获取
+		resp, err := http.Get(dc)
+		if err != nil {
+			c.Status(resp.StatusCode)
+			Logger.Info.Printf("[文件代理]请求错误：code[%d]，header[%v]", resp.StatusCode, resp.Header)
+			return
+		}
 
-	c.Data(200, resp.Header.Get("content-type"), body)
+		//连接过期
+		if resp.StatusCode != 200 {
+			returnErrorText(c, 410, "链接已过期")
+			return
+		}
+
+		body, _ := ioutil.ReadAll(resp.Body)
+
+		//附件
+		if strings.Contains(resp.Header.Get("content-type"), "image") != true {
+			urlData, err := url.Parse(dc)
+			if err != nil {
+				returnErrorText(c, 500, "文件解析失败")
+				Logger.Error.Println("[文件代理]文件解析失败:", err)
+				return
+			}
+			c.Header("content-type", resp.Header.Get("content-type"))
+			//获取文件名
+			pathData := strings.Split(urlData.Path, "/")
+			fileName := "file"
+			if len(pathData) != 0 {
+				fileName = pathData[len(pathData)-1]
+			}
+			c.Header("Content-Disposition", "attachment;filename="+fileName)
+		}
+
+		c.Data(200, resp.Header.Get("content-type"), body)
+	}
 
 }
