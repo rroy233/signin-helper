@@ -69,6 +69,11 @@ func initHandler(c *gin.Context) {
 		return
 	}
 
+	if auth.IsAdmin == 1 && classId == 0 && form.ClassCode != "new" {
+		returnErrorJson(c, "参数无效")
+		return
+	}
+
 	//判断是否新建班级
 	if auth.IsAdmin == 1 && form.ClassCode == "new" {
 		//新建班级
