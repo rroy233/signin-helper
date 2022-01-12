@@ -10,8 +10,8 @@
     <meta http-equiv='Cache-Control' content='no-siteapp'/>
     <link href="/static/favicon.ico" type="image/x-icon" rel="shortcut icon">
     <title>初始化 | 签到系统</title>
-    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+    <link href="https://web-static-1304188470.cos.ap-shanghai.myqcloud.com/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://web-static-1304188470.cos.ap-shanghai.myqcloud.com/css/vuetify.min.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
 </head>
 <body>
@@ -31,11 +31,26 @@
                     <div class="text-caption mb-5">
                         感谢您使用本系统，在开始之前，您需要完成账号的初始化。
                         <br>
-                        如果您是管理员，您可以选择加入一个现存的班级，或建立一个新的班级，如选择新建班级，请在“班级代码”一栏输入<code>new</code>。
+                        如果您是管理员，您可以选择加入一个现有的班级，或者新建一个新的班级。
                     </div>
+
+                    <v-radio-group
+                            v-model="opt"
+                            row
+                    >
+                        <v-radio
+                                label="加入班级"
+                                value="join"
+                        ></v-radio>
+                        <v-radio
+                                label="新建班级"
+                                value="new"
+                        ></v-radio>
+                    </v-radio-group>
                     <v-text-field
                             label="班级代码"
                             v-model="class_code"
+                            v-if="class_code!='new'"
                             hint="请填写班级管理员提供的代码"
                             outlined
                     ></v-text-field>
@@ -73,9 +88,9 @@
 
     </v-app>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.js"></script>
+<script src="https://web-static-1304188470.cos.ap-shanghai.myqcloud.com/js/vue.min.js"></script>
+<script src="https://web-static-1304188470.cos.ap-shanghai.myqcloud.com/js/vuetify.min.js"></script>
+<script src="https://web-static-1304188470.cos.ap-shanghai.myqcloud.com/js/axios.min.js"></script>
 <script>
 
     const backEndUrl = "{{api_url}}";
@@ -90,6 +105,7 @@
                 title:'',
                 text:''
             },
+            opt:"join",
         },
         mounted:function(){
 
@@ -134,7 +150,13 @@
             },
         },
         watch: {
-
+            opt:function (now){
+                if (now === "new"){
+                    this.class_code = "new"
+                }else{
+                    this.class_code = ""
+                }
+            }
         }
     })
 </script>
