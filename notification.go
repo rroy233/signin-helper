@@ -259,7 +259,7 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 		if err != nil {
 			Logger.Error.Println("[解析模板]生成jwt失败", err)
 		} else {
-			token = config.General.BaseUrl + "/api/login?jwt=" + jwt
+			token = fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, jwt, Cipher.Sha256Hex([]byte(jwt)))
 		}
 		s = strings.Replace(s, "{{login_url_withToken}}", token+" （有效期40分钟,若出现错误请复制到浏览器打开）", -1)
 	}

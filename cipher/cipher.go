@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 )
 
@@ -64,4 +66,11 @@ func (c *Cipher) Decrypt(cipherText string) (string, error) {
 	}
 
 	return string(paddingText[:length-number]), nil
+}
+
+func (c *Cipher) Sha256Hex(data []byte) string {
+	digest := sha256.New()
+	digest.Write(data)
+	digest.Write(c.key)
+	return hex.EncodeToString(digest.Sum(nil))
 }

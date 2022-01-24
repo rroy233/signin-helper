@@ -235,16 +235,30 @@ func killJwtByUID(UID int) {
 }
 
 func loginHandler(c *gin.Context) {
-	token := c.Query("jwt")
-	if token == "" {
+	tmp := c.Query("jwt")
+	if tmp == "" {
 		returnErrorView(c, "参数无效(-1)")
+		return
+	}
+
+	tokens := strings.Split(tmp, ".")
+	if len(tokens) != 2 || (len(tokens) == 2 && tokens[1] != Cipher.Sha256Hex([]byte(tokens[0]))) {
+		Logger.Info.Printf("[login]query:%s,error:%s", tmp, "参数无效")
+		returnErrorView(c, "参数无效")
+		return
+	}
+
+	token, err := Cipher.Decrypt(tokens[0])
+	if err != nil {
+		Logger.Info.Printf("[login]query:%s,error:%s", tmp, "解密失败")
+		returnErrorView(c, "token无效")
 		return
 	}
 
 	auth, err := verifyJWTSigning(token, true)
 	if err != nil {
 		Logger.Info.Printf("[login]token:%s,error:%s", token, err.Error())
-		returnErrorView(c, "token无效或已过期")
+		returnErrorView(c, "token已过期")
 		return
 	}
 	storeToken(c, token)

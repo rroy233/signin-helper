@@ -153,12 +153,19 @@ func initHandler(c *gin.Context) {
 		returnErrorJson(c, "系统异常")
 		return
 	}
+	tmp, err := Cipher.Encrypt([]byte(newJwt))
+	if err != nil {
+		Logger.Error.Println("[初始化]加密新的JWT失败:", err)
+		returnErrorJson(c, "系统异常")
+		return
+	}
+	loginToken := fmt.Sprintf("%s.%s", tmp, Cipher.Sha256Hex([]byte(tmp)))
 
 	//返回新的JWT,setcookie
 	c.SetCookie("token", newJwt, 60*60, "/", "", true, true)
 	res := new(ResUserInit)
 	res.Status = 0
-	res.Data.NewJWT = newJwt
+	res.Data.NewJWT = loginToken
 
 	//吊销旧jwt
 	err = killJwtByJID(auth.ID)
@@ -852,7 +859,7 @@ func UserActQueryHandler(c *gin.Context) {
 	res.Data.Announcement = act.Announcement
 	//判断是否需要使用默认图片
 	if act.Pic == "" {
-		res.Data.Pic = "/static/image/default.jpg"
+		res.Data.Pic = config.General.BaseUrl + "/static/image/default.jpg"
 	} else {
 		res.Data.Pic = act.Pic
 	}
