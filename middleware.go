@@ -74,7 +74,7 @@ func securityMiddleware(c *gin.Context) {
 	c.Header("X-Content-Type-Options", "nosniff")
 
 	//跨站
-	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Origin", config.General.BaseUrl)
 	c.Header("Access-Control-Allow-Headers", "Authorization,X-CSRF-TOKEN")
 
 	//xss
