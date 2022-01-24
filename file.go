@@ -29,6 +29,7 @@ var fileExt = map[string]string{
 	"image/png":                    ".png",
 	"image/jpeg":                   ".jpg",
 	"application/zip":              ".zip",
+	"application/x-zip-compressed": ".zip",
 	"application/x-rar-compressed": ".rar",
 	"application/msword":           ".doc",
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
