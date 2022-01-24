@@ -289,6 +289,7 @@ func adminActNewHandler(c *gin.Context) {
 			if form.Upload.Type[i] == "archive" {
 				opts.AllowContentType = append(opts.AllowContentType, "application/zip")
 				opts.AllowContentType = append(opts.AllowContentType, "application/x-rar-compressed")
+				opts.AllowContentType = append(opts.AllowContentType, "application/x-zip-compressed")
 				continue
 			}
 			if form.Upload.Type[i] == "word" {
