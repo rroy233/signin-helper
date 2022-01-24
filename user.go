@@ -756,7 +756,7 @@ func UserActLogHandler(c *gin.Context) {
 		return
 	}
 
-	const PageLength = 3 //每页显示的个数
+	const PageLength = 10 //每页显示的个数
 
 	res := new(ResActLog)
 	res.Status = 0
