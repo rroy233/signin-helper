@@ -35,6 +35,10 @@ type FormDataNotiCheck struct {
 	Token string `json:"token" binding:"required"`
 }
 
+type FormUserActLog struct {
+	Page int `form:"page" binding:"required"`
+}
+
 const (
 	ACT_TYPE_NORMAL = iota
 	ACT_TYPE_UPLOAD
@@ -745,6 +749,15 @@ func UserActLogHandler(c *gin.Context) {
 		return
 	}
 
+	form := new(FormUserActLog)
+	err = c.ShouldBindQuery(form)
+	if err != nil {
+		returnErrorJson(c, "参数无效")
+		return
+	}
+
+	const PageLength = 6 //每页显示的个数
+
 	res := new(ResActLog)
 	res.Status = 0
 
@@ -755,8 +768,13 @@ func UserActLogHandler(c *gin.Context) {
 		returnErrorJson(c, "系统异常")
 		return
 	}
+	res.Data.PagesNum = len(logs) / PageLength
+	if len(logs)%PageLength != 0 {
+		res.Data.PagesNum++
+	}
+
 	//无记录
-	if len(logs) == 0 {
+	if len(logs) == 0 || form.Page > res.Data.PagesNum || form.Page < 1 {
 		res.Data.List = nil
 		c.JSON(200, res)
 		return
@@ -765,7 +783,8 @@ func UserActLogHandler(c *gin.Context) {
 	//查询活动信息
 	res.Data.List = make([]resActLogItem, 0)
 	id := 1
-	for i := range logs {
+	res.Data.Total = len(logs)
+	for i := PageLength * (form.Page - 1); i < PageLength*form.Page; i++ {
 		act, err := getAct(logs[i].ActID)
 		if err != nil {
 			Logger.Info.Println("[用户查询参与记录]查询活动信息失败", logs[i], err)
