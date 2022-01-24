@@ -73,8 +73,9 @@ type ActStatistic struct {
 type ResActLog struct {
 	Res
 	Data struct {
-		Total int             `json:"total"`
-		List  []resActLogItem `json:"list"`
+		Total    int             `json:"total"`
+		PagesNum int             `json:"pages_num"`
+		List     []resActLogItem `json:"list"`
 	} `json:"data"`
 }
 

@@ -147,9 +147,14 @@ v1.x版本
 ### 2.6 /api/user/act/log 我的参与记录
 
 * get
+* params -> formUserActLog
+  * page
+
 * resp -> resActLog
   * total
-    * int
+    * 总数
+  * pages_num
+    * 页数总数
   * list -> []resActLogItem
 
 ### 2.7 /api/user/act/query 搜索活动详情
