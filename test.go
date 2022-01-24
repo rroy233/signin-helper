@@ -26,12 +26,22 @@ func testTplHandler(c *gin.Context) {
 		return
 	}
 
+	//测试用登录凭证
+	loginToken, err := Cipher.Encrypt([]byte(getCookie(c, "token")))
+	if err != nil {
+		returnErrorJson(c, "出现异常"+err.Error())
+		return
+	}
+	loginUrl := fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, loginToken, Cipher.Sha256Hex([]byte(loginToken)))
+
 	act := &dbAct{
 		Name:    "测试活动",
 		EndTime: "0",
 	}
 	html := ""
 	html += `<h1>通知模板</h1><p>以下为当前数据库下所有的通知模板，解析规则请看<a href="https://github.com/rroy233/signin-helper/blob/main/docs/msgTemplate.md" target="_blank">github</a>，投稿请联系管理员。</p>`
+
+	html += "<h3>当前登录凭证</h3><p>" + loginUrl + "</p>"
 
 	html += `<h3>邮件推送解析</h3><table border="1"><tr><th>ID</th><th>title</th><th>body</th><th>操作(管理员)</th></tr>`
 	for i := range tpls {
