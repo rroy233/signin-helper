@@ -756,7 +756,7 @@ func UserActLogHandler(c *gin.Context) {
 		return
 	}
 
-	const PageLength = 6 //每页显示的个数
+	const PageLength = 3 //每页显示的个数
 
 	res := new(ResActLog)
 	res.Status = 0
@@ -784,7 +784,8 @@ func UserActLogHandler(c *gin.Context) {
 	res.Data.List = make([]resActLogItem, 0)
 	id := 1
 	res.Data.Total = len(logs)
-	for i := PageLength * (form.Page - 1); i < PageLength*form.Page; i++ {
+
+	for i := PageLength * (form.Page - 1); i < PageLength*form.Page && i < len(logs); i++ {
 		act, err := getAct(logs[i].ActID)
 		if err != nil {
 			Logger.Info.Println("[用户查询参与记录]查询活动信息失败", logs[i], err)
