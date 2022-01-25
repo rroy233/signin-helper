@@ -256,10 +256,11 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 		//签发jwt
 		token := "(生成失败，请手动登录)"
 		jwt, err := generateJwt(user, generateJwtID(), 40*time.Minute)
+		jwtEncoded, err := Cipher.Encrypt([]byte(jwt))
 		if err != nil {
 			Logger.Error.Println("[解析模板]生成jwt失败", err)
 		} else {
-			token = fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, jwt, Cipher.Sha256Hex([]byte(jwt)))
+			token = fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, jwtEncoded, Cipher.Sha256Hex([]byte(jwtEncoded)))
 		}
 		s = strings.Replace(s, "{{login_url_withToken}}", token+" （有效期40分钟,若出现错误请复制到浏览器打开）", -1)
 	}
@@ -299,11 +300,12 @@ func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct, ta
 		//签发jwt
 		token := "(生成失败，请手动登录)"
 		jwt, err := generateJwt(user, generateJwtID(), 40*time.Minute)
+		jwtEncoded, err := Cipher.Encrypt([]byte(jwt))
 		if err != nil {
 			Logger.Error.Println("[解析模板]生成jwt失败", err)
 			s = strings.Replace(s, "{{login_url_withToken}}", token, -1)
 		} else {
-			token = config.General.BaseUrl + "/api/login?jwt=" + jwt
+			token = fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, jwtEncoded, Cipher.Sha256Hex([]byte(jwtEncoded)))
 			task.Url = token
 			s = strings.Replace(s, "{{login_url_withToken}}", "(点击\"阅读原文\"快速签到，入口有效期40分钟)", -1)
 		}
