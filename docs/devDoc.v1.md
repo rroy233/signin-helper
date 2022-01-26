@@ -398,6 +398,14 @@ v1.x版本
   * user_id
   * sign
 
+### 3.10.1 /api/admin/user/setAdmin 设置admin权限
+
+* post
+* data: formDataAdminUserSetAdmin
+  * user_id
+  * set_to
+  * sign
+
 ### 3.11 /api/admin/act/export 导出所有文件
 
 * post
@@ -744,6 +752,9 @@ type WxPusherCallback struct {
 * id
 * user_id
 * name
+* admin
+  * int
+
 * sign
   * 签名
 

@@ -45,6 +45,12 @@ type FormDataAdminUserDel struct {
 	Sign   string `json:"sign"`
 }
 
+type FormDataAdminUserSetAdmin struct {
+	UserID int    `json:"user_id"`
+	SetTo  int    `json:"set_to"`
+	Sign   string `json:"sign"`
+}
+
 type FormDataAdminActExport struct {
 	ActID int `json:"act_id" binding:"required"`
 }
@@ -761,7 +767,7 @@ func adminUserListHandler(c *gin.Context) {
 	}
 
 	users := make([]dbUser, 0)
-	err = db.Select(&users, "select * from `user` where `class`=?", auth.ClassId)
+	err = db.Select(&users, "select * from `user` where `class`=? order by `is_admin` desc;", auth.ClassId)
 	if err != nil {
 		Logger.Error.Println("[管理员用户列表]查询db失败:", err)
 		returnErrorJson(c, "系统异常")
@@ -778,7 +784,8 @@ func adminUserListHandler(c *gin.Context) {
 			ID:     i + 1,
 			UserID: users[i].UserID,
 			Name:   users[i].Name,
-			Sign:   MD5_short(fmt.Sprintf("%d%d%s_roy233com", users[i].UserID, auth.ClassId, auth.ID)),
+			Admin:  users[i].IsAdmin,
+			Sign:   Cipher.Sha256Hex([]byte(fmt.Sprintf("%d%d%s", users[i].UserID, auth.ClassId, auth.ID))),
 		})
 	}
 
@@ -801,7 +808,7 @@ func adminUserDelHandler(c *gin.Context) {
 		return
 	}
 
-	if form.Sign != MD5_short(fmt.Sprintf("%d%d%s_roy233com", form.UserID, auth.ClassId, auth.ID)) {
+	if form.Sign != Cipher.Sha256Hex([]byte(fmt.Sprintf("%d%d%s", form.UserID, auth.ClassId, auth.ID))) {
 		Logger.Info.Println("[管理员删除用户]数据签名无效:", form)
 		returnErrorJson(c, "数据签名无效")
 		return
@@ -854,6 +861,55 @@ func adminUserDelHandler(c *gin.Context) {
 	num, _ := result.RowsAffected()
 	res.Msg = fmt.Sprintf("已删除%d条签到记录", num)
 	Logger.Info.Println("[管理员删除用户]:", user, "已被踢出班级，操作者：", auth, "删除记录条数:", num)
+
+	killJwtByUID(form.UserID)
+
+	c.JSON(200, res)
+}
+
+func adminUserSetAdminHandler(c *gin.Context) {
+	auth, err := getAuthFromContext(c)
+	if err != nil {
+		returnErrorJson(c, "登录状态无效")
+		return
+	}
+
+	form := new(FormDataAdminUserSetAdmin)
+	err = c.ShouldBindJSON(form)
+	if err != nil || (form.SetTo != 0 && form.SetTo != 1) {
+		Logger.Info.Println("[管理员设置管理员]参数绑定失败:", err)
+		returnErrorJson(c, "参数无效")
+		return
+	}
+
+	if form.Sign != Cipher.Sha256Hex([]byte(fmt.Sprintf("%d%d%s", form.UserID, auth.ClassId, auth.ID))) {
+		Logger.Info.Println("[管理员设置管理员]数据签名无效:", form)
+		returnErrorJson(c, "数据签名无效")
+		return
+	}
+
+	res := new(ResEmpty)
+	res.Status = 0
+
+	//查询用户信息
+	user := new(dbUser)
+	err = db.Get(user, "select * from `user` where `user_id`=?", form.UserID)
+	if err != nil {
+		Logger.Info.Println("[管理员设置管理员]查询用户信息失败:", err)
+		returnErrorJson(c, "查询用户信息失败")
+		return
+	}
+	if user.IsAdmin == form.SetTo {
+		returnErrorJson(c, "您似乎未作任何修改")
+		return
+	}
+
+	_, err = db.Exec("update `user` set `is_admin`=? where `user_id`=? and `class` = ?", form.SetTo, form.UserID, auth.ClassId)
+	if err != nil {
+		Logger.Info.Println("[管理员设置管理员]更新数据库失败:", err)
+		returnErrorJson(c, "更新数据库失败")
+		return
+	}
 
 	killJwtByUID(form.UserID)
 
