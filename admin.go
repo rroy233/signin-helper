@@ -405,23 +405,45 @@ func adminActEditHandler(c *gin.Context) {
 		return
 	}
 
-	var et int64
-	//校验时间格式是否有效(仅在变更活动状态时检查)
+	var formEtTS int64
+	//校验时间格式是否有效
 	endTime := ""
-	if (form.Active == true && act.Active == 0) || (form.Active == false && act.Active == 1) { //et有变更
-		if form.Active == false {
-			et = time.Now().Unix()
+	formEtTS, err = dateString2ts(form.EndTime.D + " " + form.EndTime.T)
+	dbEtString := ts2DateString(act.EndTime)
+	dbEtString = dbEtString[:len(dbEtString)-3]
+	if err != nil {
+		Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.EndTime.D+" "+form.EndTime.T, err, auth)
+		returnErrorJson(c, "结束日期或时间无效")
+		return
+	}
+	if formEtTS < time.Now().Unix() {
+		if form.Active == true {
+			Logger.Info.Printf("[管理员][编辑活动信息]时间校验失败:%s != %s,%v\n", dbEtString, form.EndTime.D+" "+form.EndTime.T, auth)
+			returnErrorJson(c, "结束时间不能早于当前时间")
+			return
 		} else {
-			et, err = dateString2ts(form.EndTime.D + " " + form.EndTime.T)
-			if err != nil || et < time.Now().Unix() {
-				Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.EndTime.D+" "+form.EndTime.T, err, auth)
-				returnErrorJson(c, "结束日期或时间无效")
+			if dbEtString != form.EndTime.D+" "+form.EndTime.T {
+				Logger.Info.Printf("[管理员][编辑活动信息]时间校验失败:%s != %s,%v\n", dbEtString, form.EndTime.D+" "+form.EndTime.T, auth)
+				returnErrorJson(c, "活动已结束，无法更改结束时间")
 				return
 			}
 		}
-		endTime = strconv.FormatInt(et, 10)
-	} else { //et无变更
-		endTime = act.EndTime
+	}
+
+	if form.Active == true {
+		endTime = strconv.FormatInt(formEtTS, 10)
+	} else {
+		if act.Active == 0 {
+			//不作更改
+			if dbEtString != form.EndTime.D+" "+form.EndTime.T {
+				returnErrorJson(c, "活动已结束，无法修改结束时间。")
+				return
+			} else {
+				endTime = act.EndTime
+			}
+		} else {
+			endTime = strconv.FormatInt(time.Now().Unix(), 10)
+		}
 	}
 
 	//校验图片地址
