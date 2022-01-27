@@ -752,9 +752,9 @@ type WxPusherCallback struct {
 * id
 * user_id
 * name
+* email
 * admin
   * int
-
 * sign
   * 签名
 

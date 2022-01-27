@@ -784,6 +784,7 @@ func adminUserListHandler(c *gin.Context) {
 			ID:     i + 1,
 			UserID: users[i].UserID,
 			Name:   users[i].Name,
+			Email:  users[i].Email,
 			Admin:  users[i].IsAdmin,
 			Sign:   Cipher.Sha256Hex([]byte(fmt.Sprintf("%d%d%s", users[i].UserID, auth.ClassId, auth.ID))),
 		})
