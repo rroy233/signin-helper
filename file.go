@@ -230,7 +230,8 @@ func fileHandler(c *gin.Context) {
 		LocalFile := strings.Split(dc, "#")[2]
 		fileData, err := ioutil.ReadFile(LocalFile)
 		if err != nil {
-			c.Status(404)
+			fileNotFoundImage, _ := ioutil.ReadFile("./static/image/image_fileNotFound.jpg")
+			c.Data(404, "image/jpeg", fileNotFoundImage)
 			Logger.Info.Printf("[文件代理] 从本地读取 - readFile失败：%s", err.Error())
 			return
 		}
