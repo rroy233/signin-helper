@@ -294,6 +294,7 @@ type AdminUserListItem struct {
 	ID     int    `json:"id"`
 	UserID int    `json:"user_id"`
 	Name   string `json:"name"`
+	Email  string `json:"email"`
 	Admin  int    `json:"admin"`
 	Sign   string `json:"sign"`
 }
