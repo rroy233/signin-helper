@@ -205,6 +205,8 @@ func fileHandler(c *gin.Context) {
 		return
 	}
 
+	fileNotFoundImage, _ := ioutil.ReadFile("./static/image/image_fileNotFound.jpg")
+
 	/*协议
 	redis_tempImage/*  => 从redis提取
 	local_file#*       => 本地文件
@@ -230,7 +232,6 @@ func fileHandler(c *gin.Context) {
 		LocalFile := strings.Split(dc, "#")[2]
 		fileData, err := ioutil.ReadFile(LocalFile)
 		if err != nil {
-			fileNotFoundImage, _ := ioutil.ReadFile("./static/image/image_fileNotFound.jpg")
 			c.Data(404, "image/jpeg", fileNotFoundImage)
 			Logger.Info.Printf("[文件代理] 从本地读取 - readFile失败：%s", err.Error())
 			return
@@ -246,7 +247,7 @@ func fileHandler(c *gin.Context) {
 
 		//连接过期
 		if resp.StatusCode != 200 {
-			returnErrorText(c, 410, "链接已过期")
+			c.Data(resp.StatusCode, "image/jpeg", fileNotFoundImage)
 			return
 		}
 
