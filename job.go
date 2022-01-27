@@ -16,11 +16,11 @@ func initJob() {
 	crontab = cron.New(cron.WithLocation(TZ))
 	var err error
 
-	if config.General.Production == false {
-		//debug
-		_, err = crontab.AddFunc("18 13 * * ?", PrepareDailyNotification)
-		_, err = crontab.AddFunc("18 13 * * ?", SendDailyNotification)
-	}
+	//if config.General.Production == false {
+	//	//debug
+	//	_, err = crontab.AddFunc("18 13 * * ?", PrepareDailyNotification)
+	//	_, err = crontab.AddFunc("18 13 * * ?", SendDailyNotification)
+	//}
 
 	//清除已过期文件
 	//每天凌晨1点

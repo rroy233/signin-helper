@@ -522,14 +522,24 @@ func adminActEditHandler(c *gin.Context) {
 			}
 			picUrl = config.General.BaseUrl + "/file/" + fileToken + "." + MD5(fileToken+config.General.AESKey)
 			rdb.Del(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", auth.ID))
-		} else if purl.Host == "i.loli.net" { //图床
-			picUrl = purl.Scheme + "://" + purl.Host + "/" + purl.Path
+		} else if strings.HasSuffix(purl.Host, ".loli.net") { //图床->使用代理
+			fileToken, err := Cipher.Encrypt([]byte(purl.Scheme + "://" + purl.Host + purl.Path))
+			if err != nil {
+				Logger.Error.Println("[管理员][创建活动]生成图片访问地址加密失败:", err)
+				returnErrorJson(c, "生成图片访问地址失败")
+				return
+			}
+			picUrl = config.General.BaseUrl + "/file/" + fileToken + "." + MD5(fileToken+config.General.AESKey)
+		} else if purl.Scheme+"://"+purl.Host == config.General.BaseUrl { //本站图片
+			picUrl = purl.Scheme + "://" + purl.Host + purl.Path
 		} else {
 			Logger.Error.Println("[管理员][创建活动]图片地址校验", err, auth)
 			returnErrorJson(c, "图片地址无效(-2)")
 			return
 		}
 		Logger.Info.Println("[管理员][创建活动][图片地址]", picUrl)
+	} else {
+		picUrl = act.Pic
 	}
 
 	//字段长度校验name40 ann50 ct20 url500
@@ -891,19 +901,6 @@ func adminUserSetAdminHandler(c *gin.Context) {
 
 	res := new(ResEmpty)
 	res.Status = 0
-
-	//查询用户信息
-	user := new(dbUser)
-	err = db.Get(user, "select * from `user` where `user_id`=?", form.UserID)
-	if err != nil {
-		Logger.Info.Println("[管理员设置管理员]查询用户信息失败:", err)
-		returnErrorJson(c, "查询用户信息失败")
-		return
-	}
-	if user.IsAdmin == form.SetTo {
-		returnErrorJson(c, "您似乎未作任何修改")
-		return
-	}
 
 	_, err = db.Exec("update `user` set `is_admin`=? where `user_id`=? and `class` = ?", form.SetTo, form.UserID, auth.ClassId)
 	if err != nil {
