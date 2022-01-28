@@ -50,7 +50,7 @@ func authorizationMiddleware(c *gin.Context, isAdmin int) {
 		return
 	}
 	if isAdmin == 1 && auth.IsAdmin != 1 {
-		returnErrorView(c, "您无权限访问")
+		returnErrorJson(c, "您无权限访问")
 		c.Abort()
 		return
 	}

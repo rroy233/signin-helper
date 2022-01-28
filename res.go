@@ -291,12 +291,13 @@ type UserNotiFetchItem struct {
 }
 
 type AdminUserListItem struct {
-	ID     int    `json:"id"`
-	UserID int    `json:"user_id"`
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Admin  int    `json:"admin"`
-	Sign   string `json:"sign"`
+	ID       int    `json:"id"`
+	UserID   int    `json:"user_id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	NotiType string `json:"noti_type"`
+	Admin    int    `json:"admin"`
+	Sign     string `json:"sign"`
 }
 
 //函数

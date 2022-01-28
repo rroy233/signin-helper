@@ -753,6 +753,7 @@ type WxPusherCallback struct {
 * user_id
 * name
 * email
+* noti_type
 * admin
   * int
 * sign
