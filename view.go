@@ -31,7 +31,14 @@ func viewReg(c *gin.Context) {
 		c.Redirect(302, "/#/error/"+url.QueryEscape("您无需再做账号初始化"))
 		return
 	}
-	c.Data(200, ContentTypeHTML, views("reg"))
+	if auth.IsAdmin == 1 {
+		c.Data(200, ContentTypeHTML, views("reg", map[string]string{
+			"is_admin": "yes",
+		}))
+	} else {
+		c.Data(200, ContentTypeHTML, views("reg"))
+	}
+
 }
 
 //模板加载函数

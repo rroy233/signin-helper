@@ -45,6 +45,7 @@
                         <v-radio
                                 label="新建班级"
                                 value="new"
+                                :disabled="!is_admin"
                         ></v-radio>
                     </v-radio-group>
                     <v-text-field
@@ -94,6 +95,7 @@
 <script>
 
     const backEndUrl = "{{api_url}}";
+    const isAdmin = "{{is_admin}}";
     new Vue({
         el: '#app',
         vuetify: new Vuetify(),
@@ -103,12 +105,17 @@
             dialog:{
                 open:false,
                 title:'',
-                text:''
+                text:'',
             },
             opt:"join",
+            is_admin:false,
         },
         mounted:function(){
-
+            if (isAdmin == "yes"){
+                this.is_admin = true
+            }else{
+                this.is_admin = false
+            }
         },
         methods:{
             submit:function(){
