@@ -789,14 +789,26 @@ func adminUserListHandler(c *gin.Context) {
 	res.Data.Count = len(users)
 	res.Data.Data = make([]AdminUserListItem, 0)
 
+	notiType := ""
 	for i := range users {
+		switch users[i].NotificationType {
+		case NOTIFICATION_TYPE_NONE:
+			notiType = "无"
+		case NOTIFICATION_TYPE_EMAIL:
+			notiType = "邮件"
+		case NOTIFICATION_TYPE_WECHAT:
+			notiType = "微信"
+		default:
+			notiType = "未知"
+		}
 		res.Data.Data = append(res.Data.Data, AdminUserListItem{
-			ID:     i + 1,
-			UserID: users[i].UserID,
-			Name:   users[i].Name,
-			Email:  users[i].Email,
-			Admin:  users[i].IsAdmin,
-			Sign:   Cipher.Sha256Hex([]byte(fmt.Sprintf("%d%d%s", users[i].UserID, auth.ClassId, auth.ID))),
+			ID:       i + 1,
+			UserID:   users[i].UserID,
+			Name:     users[i].Name,
+			Email:    users[i].Email,
+			NotiType: notiType,
+			Admin:    users[i].IsAdmin,
+			Sign:     Cipher.Sha256Hex([]byte(fmt.Sprintf("%d%d%s", users[i].UserID, auth.ClassId, auth.ID))),
 		})
 	}
 

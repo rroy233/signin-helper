@@ -216,13 +216,13 @@ func fileHandler(c *gin.Context) {
 		tmpImageToken := strings.Split(dc, "/")[1]
 		rdbData, err := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:TempFile:file_%s", tmpImageToken)).Result()
 		if err != nil {
-			c.Status(404)
+			c.Data(404, "image/jpeg", fileNotFoundImage)
 			Logger.Info.Printf("[文件代理] 从redis提取 - 读取rdb失败：%s", err.Error())
 			return
 		}
 		fileData, err := base64.StdEncoding.DecodeString(rdbData)
 		if err != nil {
-			c.Status(404)
+			c.Data(404, "image/jpeg", fileNotFoundImage)
 			Logger.Info.Printf("[文件代理] 从redis提取 - base64解码失败：%s", err.Error())
 			return
 		}
