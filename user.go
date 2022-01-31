@@ -380,7 +380,7 @@ func UserActStatisticHandler(c *gin.Context) {
 		return
 	}
 
-	actID, err := queryActIdByActToken(actToken)
+	actID, err := queryActIdByActToken(actToken, auth.ID)
 	if err != nil {
 		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")
@@ -437,7 +437,7 @@ func UserActUploadHandler(c *gin.Context) {
 	}
 
 	//从redis查找活动id
-	actID, err := queryActIdByActToken(actToken)
+	actID, err := queryActIdByActToken(actToken, auth.ID)
 	if err != nil {
 		Logger.Info.Println("[文件上传]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")
@@ -602,7 +602,7 @@ func UserActSigninHandler(c *gin.Context) {
 	}
 
 	//从redis查找活动id
-	actID, err := queryActIdByActToken(form.ActToken)
+	actID, err := queryActIdByActToken(form.ActToken, auth.ID)
 	if err != nil {
 		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")
@@ -832,7 +832,7 @@ func UserActQueryHandler(c *gin.Context) {
 		return
 	}
 
-	actID, err := queryActIdByActToken(actToken)
+	actID, err := queryActIdByActToken(actToken, auth.ID)
 	if err != nil {
 		Logger.Info.Println("[签到]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")
@@ -1086,7 +1086,7 @@ func UserActCancelHandler(c *gin.Context) {
 	}
 
 	//从redis查找活动id
-	actID, err := queryActIdByActToken(form.ActToken)
+	actID, err := queryActIdByActToken(form.ActToken, auth.ID)
 	if err != nil {
 		Logger.Info.Println("[取消签到]从redis查找活动id失败", err, auth)
 		returnErrorJson(c, "参数无效(-2)")

@@ -182,11 +182,14 @@ func cacheActStatistics(actID int) (res *ActStatistic, err error) {
 	return
 }
 
-func queryActIdByActToken(actToken string) (id int, err error) {
+func queryActIdByActToken(actToken string, JwtID string) (id int, err error) {
 	r := rdb.Get(ctx, "SIGNIN_APP:actToken:"+actToken).Val()
 	if r == "" {
 		return 0, errors.New("actToken不存在")
 	}
 	id, err = strconv.Atoi(r)
+	if actToken != MD5_short(JwtID+r) {
+		return 0, errors.New("无权限查看")
+	}
 	return
 }
