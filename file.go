@@ -244,6 +244,7 @@ func fileHandler(c *gin.Context) {
 			Logger.Info.Printf("[文件代理]请求错误：code[%d]，header[%v]", resp.StatusCode, resp.Header)
 			return
 		}
+		defer resp.Body.Close()
 
 		//连接过期
 		if resp.StatusCode != 200 {
