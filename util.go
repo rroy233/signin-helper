@@ -38,7 +38,7 @@ func dateString2ts(datetime string) (int64, error) {
 }
 
 func mkShortUrlToken(url string, exp time.Duration) (string, error) {
-	token := MD5_short(fmt.Sprintf("%s_%d", url, time.Now().UnixMilli()))
+	token := MD5_short(fmt.Sprintf("%s_%d", url, time.Now().UnixNano()))
 	err := rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:UrlToken:%s", token), url, exp).Err()
 	if err != nil {
 		return "", err
