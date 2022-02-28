@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/domodwyer/mailyak/v3"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/smtp"
@@ -224,6 +225,13 @@ func wechatSender(queue chan *NotifyJob) {
 			Logger.Error.Println("[微信推送]", sendConfig, "请求api失败", err)
 			break
 		}
+		resData, err := ioutil.ReadAll(resp.Body)
+		err = resp.Body.Close()
+		if err != nil {
+			Logger.Error.Println("[微信推送]", sendConfig, "读取body失败", err)
+			break
+		}
+		Logger.Info.Println("[微信推送][返回]", sendConfig, string(resData))
 		Logger.Info.Println("[微信推送]", sendConfig, "异步发送成功", resp)
 	}
 }
