@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -34,4 +35,13 @@ func dateString2ts(datetime string) (int64, error) {
 		return 0, err
 	}
 	return tmp.Unix(), nil
+}
+
+func mkShortUrlToken(url string, exp time.Duration) (string, error) {
+	token := MD5_short(fmt.Sprintf("%s_%d", url, time.Now().UnixMilli()))
+	err := rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:UrlToken:%s", token), url, exp).Err()
+	if err != nil {
+		return "", err
+	}
+	return token, err
 }

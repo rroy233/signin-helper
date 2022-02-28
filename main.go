@@ -42,7 +42,6 @@ func main() {
 
 	//初始化cos
 	cosClientUpdate()
-
 	ssoClient = sso.NewClient(config.General.Production, config.SSO.ServiceName, config.SSO.ClientId, config.SSO.ClientSecret)
 
 	log.Println("[系统]已启动")

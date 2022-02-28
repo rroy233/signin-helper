@@ -1160,3 +1160,20 @@ func UserActCancelHandler(c *gin.Context) {
 	c.JSON(200, res)
 
 }
+
+func shortUrlHandler(c *gin.Context) {
+	p := c.Param("data")
+	if p == "" {
+		returnErrorView(c, "链接无效(-1)")
+		return
+	}
+
+	url := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:UrlToken:%s", p)).Val()
+	if url == "" {
+		returnErrorView(c, "链接不存在或已过期")
+		return
+	}
+
+	c.Redirect(302, url)
+	return
+}
