@@ -274,5 +274,5 @@ func fileHandler(c *gin.Context) {
 
 		c.Data(200, resp.Header.Get("content-type"), body)
 	}
-
+	return
 }

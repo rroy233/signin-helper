@@ -609,6 +609,14 @@ v1.x版本
 
 [exp] -
 
+### 5.17 UrlToken 短网址
+
+[key] SIGNIN_APP:UrlToken:{{url_token}}
+
+[val] md5_short
+
+[exp] va
+
 ## 6. 自定义数据结构
 
 ### 6.1 actStatisticUser

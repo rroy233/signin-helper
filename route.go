@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"io"
 	"os"
@@ -25,6 +26,11 @@ func init() {
 		c.Data(404, ContentTypeHTML, views("error1", map[string]string{"text": "该页面不存在"}))
 	})
 
+	//debugger
+	if config.General.Production == false {
+		pprof.Register(router)
+	}
+
 	router.GET("/", viewIndex)
 	router.Static("/js", "./views/dist/js")
 	router.Static("/css", "./views/dist/css")
@@ -48,6 +54,8 @@ func init() {
 	router.POST("/api/logout", logoutHandler)
 	router.POST("/api/wxpusherCallback", wxpusherCallbackHandler)
 	router.GET("/file/:data", fileHandler)
+	router.GET("/url/:data", shortUrlHandler)
+	router.GET("/error/:data", viewError)
 
 	//用户api
 	userApiGroup := router.Group("/api/user")

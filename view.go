@@ -41,6 +41,14 @@ func viewReg(c *gin.Context) {
 
 }
 
+func viewError(c *gin.Context) {
+	txt := c.Param("data")
+	if txt == "" {
+		txt = "NA"
+	}
+	c.Data(404, ContentTypeHTML, views("error1", map[string]string{"text": txt}))
+}
+
 //模板加载函数
 func views(template string, params ...map[string]string) (html []byte) {
 	name := ""
