@@ -99,7 +99,7 @@ func cosDownload(objKey string, dest string) error {
 	return err
 }
 
-func cosGetUrl(objKey string, expTime time.Duration) (imgUrl string, err error) {
+func cosGetUrl(objKey string, expTime time.Duration, imageCompress bool) (imgUrl string, err error) {
 	var tmp *url.URL
 	tmp, err = cosClient.Object.GetPresignedURL(ctx, "GET", objKey, config.Cos.SecretID, config.Cos.SecretKey, expTime, nil)
 	if err != nil {
@@ -107,7 +107,11 @@ func cosGetUrl(objKey string, expTime time.Duration) (imgUrl string, err error) 
 		return
 	}
 
-	fileToken, err := Cipher.Encrypt([]byte(tmp.String()))
+	fileUrl := tmp.String()
+	if imageCompress == true {
+		fileUrl += "&imageMogr2/format/jpg/interlace/0/quality/36"
+	}
+	fileToken, err := Cipher.Encrypt([]byte(fileUrl))
 	if err != nil {
 		Logger.Error.Println("[COS]生成代理url失败:", err.Error())
 		return
