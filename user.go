@@ -341,10 +341,10 @@ func UserActInfoHandler(c *gin.Context) {
 				if myFile.Status == FILE_STATUS_REMOTE {
 					if strings.Contains(myFile.ContentType, "image") == true {
 						actItem.Upload.Type = "image"
-						actItem.Upload.ImgUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute)
+						actItem.Upload.ImgUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute, true)
 					} else {
 						actItem.Upload.Type = "other"
-						actItem.Upload.DownloadUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute)
+						actItem.Upload.DownloadUrl, err = cosGetUrl(myFile.Remote, 5*time.Minute, false)
 					}
 				} else if myFile.Status == FILE_STATUS_DELETED {
 					actItem.Upload.Enabled = false

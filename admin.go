@@ -1094,9 +1094,9 @@ func AdminActViewFileHandler(c *gin.Context) {
 	res.Data.Type = "other"
 	if strings.Contains(fileItem.ContentType, "image") == true {
 		res.Data.Type = "image"
-		res.Data.ImgUrl, err = cosGetUrl(fileItem.Remote, 5*time.Minute)
+		res.Data.ImgUrl, err = cosGetUrl(fileItem.Remote, 5*time.Minute, true)
 	} else {
-		res.Data.DownloadUrl, err = cosGetUrl(fileItem.Remote, 5*time.Minute)
+		res.Data.DownloadUrl, err = cosGetUrl(fileItem.Remote, 5*time.Minute, false)
 	}
 	if err != nil {
 		Logger.Error.Println("[管理员查看用户文件]签发url失败：", err)
