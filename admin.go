@@ -1114,7 +1114,7 @@ func AdminActRandomPicHandler(c *gin.Context) {
 		return
 	}
 
-	req, err := http.NewRequest("GET", "https://pximg.rainchan.win/img", nil)
+	req, err := http.NewRequest("GET", "https://rc-pximg.glitch.me/img", nil)
 	if err != nil {
 		returnErrorJson(c, "接口异常")
 		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 新建请求异常：", err)
