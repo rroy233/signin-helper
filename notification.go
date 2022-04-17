@@ -262,15 +262,23 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 
 	if strings.Contains(s, "{{login_url_withToken}}") == true && user != nil {
 		//签发jwt
-		token := "(生成失败，请手动登录)"
+		token := config.General.BaseUrl
 		jwt, err := generateJwt(user, generateJwtID(), 40*time.Minute)
 		jwtEncoded, err := Cipher.Encrypt([]byte(jwt))
 		if err != nil {
 			Logger.Error.Println("[解析模板]生成jwt失败", err)
+			s = strings.Replace(s, "{{login_url_withToken}}", token, -1)
 		} else {
-			token = fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, jwtEncoded, Cipher.Sha256Hex([]byte(jwtEncoded)))
+			loginUrl := fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, jwtEncoded, Cipher.Sha256Hex([]byte(jwtEncoded)))
+			urlToken, err := mkShortUrlToken(loginUrl, 40*time.Minute)
+			if err != nil {
+				Logger.Error.Println("[解析模板]签发登录凭证失败", err)
+				s = strings.Replace(s, "{{login_url_withToken}}", "(签发登录凭证失败，请手动登录网站)", -1)
+			} else {
+				shortUrl := fmt.Sprintf("%s/url/%s", config.General.BaseUrl, urlToken)
+				s = strings.Replace(s, "{{login_url_withToken}}", shortUrl+"（点击链接快速签到，入口有效期40分钟）", -1)
+			}
 		}
-		s = strings.Replace(s, "{{login_url_withToken}}", token+" （有效期40分钟,若出现错误请复制到浏览器打开）", -1)
 	}
 
 	return s

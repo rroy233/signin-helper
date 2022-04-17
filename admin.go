@@ -1114,9 +1114,9 @@ func AdminActRandomPicHandler(c *gin.Context) {
 		return
 	}
 
-	req, err := http.NewRequest("GET", "https://rc-pximg.glitch.me/img", nil)
+	req, err := http.NewRequest("GET", "https://pximg2.rainchan.win/img", nil)
 	if err != nil {
-		returnErrorJson(c, "接口异常")
+		returnErrorJson(c, "第三方接口异常")
 		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 新建请求异常：", err)
 		return
 	}
@@ -1137,21 +1137,21 @@ func AdminActRandomPicHandler(c *gin.Context) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		// handle err
-		returnErrorJson(c, "接口异常")
+		returnErrorJson(c, "第三方接口异常")
 		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 异常：", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		returnErrorJson(c, "接口异常")
+		returnErrorJson(c, "第三方接口异常")
 		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 异常：", err, resp.Header)
 		return
 	}
 
 	imageData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		returnErrorJson(c, "接口异常")
+		returnErrorJson(c, "第三方接口异常")
 		Logger.Error.Println("[管理员获取随机图片] 请求接口 - 读取body异常：", err)
 		return
 	}
