@@ -37,3 +37,8 @@ cos:
   base_path: ""
   secret_id: ""
   secret_key: ""
+
+statistics_report:
+  v6_51_la: true
+  v6_51_la_js1: ''
+  v6_51_la_js2: ''
