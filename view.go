@@ -18,7 +18,16 @@ func viewIndex(c *gin.Context) {
 		return
 	}
 
-	c.Data(200, ContentTypeHTML, views("dist.index"))
+	data := views("dist.index")
+	if config.StatisticsReport.V651La == true {
+		jss := strings.Join([]string{config.StatisticsReport.V651LaJs1,
+			config.StatisticsReport.V651LaJs2,
+			"</head>",
+		}, "")
+		data = bytes.Replace(data, []byte("</head>"), []byte(jss), 1)
+	}
+
+	c.Data(200, ContentTypeHTML, data)
 }
 
 func viewReg(c *gin.Context) {

@@ -50,6 +50,11 @@ type Struct struct {
 		SecretID  string `yaml:"secret_id"`
 		SecretKey string `yaml:"secret_key"`
 	} `yaml:"cos"`
+	StatisticsReport struct {
+		V651La    bool   `yaml:"v6_51_la"`
+		V651LaJs1 string `yaml:"v6_51_la_js1"`
+		V651LaJs2 string `yaml:"v6_51_la_js2"`
+	} `yaml:"statistics_report"`
 }
 
 // getConfig 读取配置文件并返回
