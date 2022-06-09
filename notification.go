@@ -314,6 +314,7 @@ func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct, ta
 
 	if strings.Contains(s, "{{login_url_withToken}}") == true && user != nil {
 		s = strings.Replace(s, "{{login_url_withToken}}", fmt.Sprintf("%s/", config.General.BaseUrl)+"（请在完成微信绑定后使用微信登录）", -1)
+		task.Url = fmt.Sprintf("%s/", config.General.BaseUrl)
 	}
 	s = task.Title + "<br>" + s
 	return s
