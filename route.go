@@ -20,6 +20,7 @@ func init() {
 
 	router = gin.Default()
 	router.Use(securityMiddleware)
+	router.Use(CacheMiddleware)
 	router.MaxMultipartMemory = 100 << 20 // 100 MiB
 
 	router.NoRoute(func(c *gin.Context) {
