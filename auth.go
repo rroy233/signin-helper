@@ -126,13 +126,14 @@ func ssoCallBackHandler(c *gin.Context) {
 
 	userInfo, err := ssoClient.GetUserInfo(accessToken)
 	if err != nil {
+		Logger.Info.Println("登录失败:Failed To Get UserInfo!" + err.Error())
 		returnErrorView(c, "登录失败:Failed To Get UserInfo!")
 		return
 	}
 
 	checkDB()
 	user := new(dbUser)
-	err = db.Get(user, "select * from `user` where `sso_uid`=?", userInfo.Userid)
+	err = db.Get(user, "select * from `user` where `sso_uid`=?", userInfo.UserID)
 	if err != nil {
 		//未初始化
 		//定义管理员群组
@@ -145,7 +146,7 @@ func ssoCallBackHandler(c *gin.Context) {
 			Email:            userInfo.Email,
 			Class:            0,
 			IsAdmin:          isAdmin,
-			SsoUid:           userInfo.Userid,
+			SsoUid:           userInfo.UserID,
 			NotificationType: NOTIFICATION_TYPE_EMAIL,
 		}
 		uid, err := createUser(userForm)
