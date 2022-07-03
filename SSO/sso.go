@@ -19,21 +19,17 @@ type Client struct {
 	clientSecret string
 }
 type userInfo struct {
-	Userid    int    `json:"userid"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Avatar    string `json:"avatar"`
-	UserGroup string `json:"user_group"`
-	ExpTime   int64  `json:"exp_time"`
-	Key       string `json:"key"`
+	UserInfo
+	ExpTime int64  `json:"exp_time"`
+	Key     string `json:"key"`
 }
 
 var keyPosition = []string{"userid", "username", "email", "avatar", "user_group", "exp_time", "key"}
 
 type ssoResp struct {
-	Status int    `json:"status"`
-	Data   string `json:"data"`
-	Msg    string `json:"msg"`
+	Status int      `json:"status"`
+	Data   UserInfo `json:"data"`
+	Msg    string   `json:"msg"`
 }
 
 var authServer string
@@ -56,7 +52,7 @@ func NewUser() (user *userInfo) {
 }
 
 // GetUserInfo 向鉴权服务器获取用户信息
-func (c *Client) GetUserInfo(accessToken string) (user *userInfo, err error) {
+func (c *Client) GetUserInfo(accessToken string) (*userInfo, error) {
 	resp, err := http.Get(authServer + "/auth/userinfo?access_token=" + accessToken + "&client_secret=" + c.clientSecret)
 	if err != nil {
 		return nil, err
@@ -67,7 +63,6 @@ func (c *Client) GetUserInfo(accessToken string) (user *userInfo, err error) {
 		return nil, err
 	}
 
-	user = new(userInfo)
 	rs := new(ssoResp)
 	err = jjson.Unmarshal(data, rs)
 	if err != nil {
@@ -77,12 +72,11 @@ func (c *Client) GetUserInfo(accessToken string) (user *userInfo, err error) {
 		return nil, errors.New("凭证失效")
 	}
 
-	err = jjson.Unmarshal([]byte(rs.Data), user)
-	if err != nil {
-		return nil, err
+	user := &userInfo{
+		rs.Data,
+		time.Now().Add(3 * time.Hour).Unix(),
+		"",
 	}
-	user.ExpTime = time.Now().Add(3 * time.Hour).Unix()
-	user.Key = ""
 
 	config := &jjson.Config{EscapeHTML: false}
 	tmp, err := config.Froze().Marshal(user)
@@ -92,7 +86,7 @@ func (c *Client) GetUserInfo(accessToken string) (user *userInfo, err error) {
 
 	user.Key = md5Short(string(tmp) + c.clientSecret)
 
-	return
+	return user, nil
 }
 
 // VeryKey 验证登录信息是否有效
@@ -151,7 +145,7 @@ func (c *Client) ParseCookie(r *http.Request, cookieName string) (*userInfo, err
 }
 
 func (u userInfo) GetUID() string {
-	return strconv.Itoa(u.Userid)
+	return strconv.Itoa(u.UserID)
 }
 
 // MD5_short 生成6位MD5
