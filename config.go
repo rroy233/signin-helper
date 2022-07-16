@@ -11,12 +11,13 @@ var config *Struct
 // Struct 配置文件结构体
 type Struct struct {
 	General struct {
-		Production bool   `yaml:"production"`
-		BaseUrl    string `yaml:"base_url"`
-		ListenPort string `yaml:"listen_port"`
-		JwtKey     string `yaml:"jwt_key"`
-		AESKey     string `yaml:"AES_key"`
-		AESIv      string `yaml:"AES_iv"`
+		Production   bool   `yaml:"production"`
+		BaseUrl      string `yaml:"base_url"`
+		ListenPort   string `yaml:"listen_port"`
+		JwtKey       string `yaml:"jwt_key"`
+		AESKey       string `yaml:"AES_key"`
+		AESIv        string `yaml:"AES_iv"`
+		RandomPicAPI string `yaml:"random_pic_api"`
 	} `yaml:"genenral"`
 	Db struct {
 		Server    string `yaml:"server"`
