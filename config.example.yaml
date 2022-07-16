@@ -5,6 +5,7 @@ genenral:
   jwt_key: ""
   AES_key: "12345678901234567890123456789012"
   AES_iv: "1234567890123456"
+  random_pic_api: ""
 
 db:
   server: "127.0.0.1"
