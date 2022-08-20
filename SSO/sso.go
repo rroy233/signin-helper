@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"signin/Logger"
 	"strconv"
 	"time"
 )
@@ -63,12 +64,13 @@ func (c *Client) GetUserInfo(accessToken string) (*userInfo, error) {
 		return nil, err
 	}
 
+	Logger.Info.Println("[GetUserInfo]" + string(data))
 	rs := new(ssoResp)
 	err = jjson.Unmarshal(data, rs)
 	if err != nil {
 		return nil, err
 	}
-	if rs.Status == -1 {
+	if rs.Status < 0 {
 		return nil, errors.New("凭证失效")
 	}
 
