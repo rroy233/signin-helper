@@ -81,6 +81,13 @@ func adminActInfoHandler(c *gin.Context) {
 		return
 	}
 
+	//判断是否为本班
+	if act.ClassID != auth.ClassId {
+		Logger.Error.Println("[管理员][获取活动信息]查询非本班活动", actID, auth)
+		returnErrorJson(c, "无权限访问")
+		return
+	}
+
 	//数据处理
 	res := new(ResAdminActInfo)
 	res.Status = 0
@@ -842,7 +849,7 @@ func adminUserDelHandler(c *gin.Context) {
 
 	//查询用户信息
 	user := new(dbUser)
-	err = db.Get(user, "select * from `user` where `user_id`=?", form.UserID)
+	err = db.Get(user, "select * from `user` where `user_id`=? and `class`=?;", form.UserID, auth.ClassId)
 	if err != nil {
 		Logger.Info.Println("[管理员删除用户]查询用户信息失败:", err)
 		returnErrorJson(c, "查询用户信息失败")
