@@ -56,8 +56,26 @@ func initJob() {
 		Logger.Info.Println("[定时任务][成功]添加SendDailyNotification成功")
 	}
 
-	crontab.Start()
+	//预约活动的触发
+	//每整分钟检查一次
+	go func() {
+		t := time.Now()
+		if t.Second() != 0 {
+			tm1 := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute()+1, 0, 0, t.Location())
+			time.Sleep(tm1.Sub(t))
+			CheckWaitingAct()
+		}
+		_, err = crontab.AddFunc("@every 1m", CheckWaitingAct)
+		if err != nil {
+			Logger.FATAL.Fatalln("[定时任务][异常]添加CheckWaitingAct失败:", err)
+		} else {
+			Logger.Info.Println("[定时任务][成功]添加CheckWaitingAct成功")
+		}
+		return
+	}()
 
+	crontab.Start()
+	return
 }
 
 func PrepareDailyNotification() {
@@ -286,8 +304,55 @@ func CleanExpiredFiles() {
 	}
 }
 
+func CheckWaitingAct() {
+	loggerPrefix := "[定时任务][CheckWaitingAct]"
+
+	//获取预约的活动
+	WaitAct := make([]dbAct, 0)
+	err := db.Select(&WaitAct, "SELECT * FROM `activity` where `active`=?", ActActiveWait)
+	if err != nil {
+		Logger.Error.Println(loggerPrefix, "获取班级列表失败", err)
+		return
+	}
+
+	//遍历每个活动
+	for i, act := range WaitAct {
+		var beginTime int64
+		beginTime, err = strconv.ParseInt(act.BeginTime, 10, 64)
+		if time.Now().Unix() >= beginTime { //启动该活动
+			Logger.Info.Printf("%s[list-%d]已启动活动id:%d", loggerPrefix, i, act.ActID)
+			//更新db active = 1
+			_, err = db.Exec("update `activity` set `active` = ? where `act_id`=?", ActActiveActive, act.ActID)
+			if err != nil {
+				Logger.Error.Printf("%s[list-%d]更新活动id:%d失败：%s", loggerPrefix, i, act.ActID, err.Error())
+				continue
+			}
+			//更新缓存
+			if _, err := cacheIDs(act.ClassID); err != nil {
+				Logger.Error.Printf("%s[list-%d]更新活动id:%d cacheIDs 失败：%s", loggerPrefix, i, act.ActID, err.Error())
+				continue
+			}
+			actTmp, err := cacheAct(act.ActID)
+			if err != nil {
+				Logger.Error.Printf("%s[list-%d]更新活动id:%d cacheAct 失败：%s", loggerPrefix, i, act.ActID, err.Error())
+				continue
+			}
+
+			//群发消息
+			err = newActBulkSend(act.ClassID, actTmp)
+			if err != nil {
+				Logger.Info.Println("[job][创建活动]群发时发生错误:", err)
+			}
+
+			continue
+		}
+	}
+
+	return
+}
+
 //随机选取发送模板
-func getTemplate(msgType int, level int) (*NotifyJob, error) {
+func getTemplate(msgType TplType, level TplLevel) (*NotifyJob, error) {
 	job := new(NotifyJob)
 	tpls := make([]dbTplItem, 0)
 	err := db.Select(&tpls, "select `title`,`body` from `msg_template` where `msg_type`=? and `level`=?", msgType, level)

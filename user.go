@@ -674,7 +674,7 @@ func UserNotiGetHandler(c *gin.Context) {
 		return
 	}
 
-	notiType := 0
+	notiType := NotificationType(0)
 	err = db.Get(&notiType, "select `notification_type` from `user` where `user_id` = ?", auth.UserID)
 	if err != nil {
 		Logger.Error.Println("[查询通知方式]", err, auth)
@@ -1033,18 +1033,12 @@ func UserNotiFetchHandler(c *gin.Context) {
 		}
 	}
 
-	//SIGNIN_APP:UserNoti:USER_{{USER_ID}}:{{noti_token}}
-	keys := rdb.Keys(ctx, "SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":*").Val()
-	if len(keys) == 0 {
-		res := new(ResEmpty)
-		res.Status = 0
-		c.JSON(200, res)
-		return
-	}
-
 	res := new(ResUserNotiFetch)
 	res.Status = 0
 	res.Data = make([]*UserNotiFetchItem, 0)
+
+	//SIGNIN_APP:UserNoti:USER_{{USER_ID}}:{{noti_token}}
+	keys := rdb.Keys(ctx, "SIGNIN_APP:UserNoti:USER_"+auth.UserIdString()+":*").Val()
 	for i := range keys {
 		key := strings.Split(keys[i], ":")
 		if len(key) != 4 {
@@ -1058,6 +1052,25 @@ func UserNotiFetchHandler(c *gin.Context) {
 			continue
 		}
 		res.Data = append(res.Data, item)
+	}
+	//查询是否有预定的活动
+	idsCache := rdb.Get(ctx, "SIGNIN_APP:Class_Active_Act:"+strconv.FormatInt(int64(auth.ClassId), 10)).Val()
+	if idsCache != "" {
+		ids := new(CacheIDS)
+		err = json.Unmarshal([]byte(idsCache), ids)
+		if err != nil {
+			Logger.Error.Println("[user][UserNotiFetchHandler]解析信息缓存失败:", err)
+			returnErrorJson(c, "获取预定的活动失败")
+			return
+		}
+		if len(ids.Waiting) != 0 {
+			res.Data = append(res.Data, &UserNotiFetchItem{
+				"info",
+				"SYS_WAITING_ACTIVITY_NOTIFICATION",
+				"",
+				fmt.Sprintf("您的班级当前有<code>%d</code>个活动即将开启！", len(ids.Waiting)),
+			})
+		}
 	}
 
 	c.JSON(200, res)

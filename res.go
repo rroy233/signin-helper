@@ -111,7 +111,12 @@ type ResAdminActInfo struct {
 		Pic          string `json:"pic"`
 		DailyNotify  bool   `json:"daily_notify"`
 		CheerText    string `json:"cheer_text"`
-		EndTime      struct {
+		NeedWait     bool   `json:"need_wait"`
+		BeginTime    struct {
+			D string `json:"d"`
+			T string `json:"t"`
+		} `json:"begin_time"`
+		EndTime struct {
 			D string `json:"d"`
 			T string `json:"t"`
 		} `json:"end_time"`
@@ -145,7 +150,9 @@ type ResAdminActList struct {
 	Res
 	Data struct {
 		ActiveNum   int                 `json:"active_num"`
+		WaitingNum  int                 `json:"waiting_num"`
 		ActiveList  []*adminActListItem `json:"active_list"`
+		WaitingList []*adminActListItem `json:"waiting_list"`
 		HistoryList []*adminActListItem `json:"history_list"`
 	} `json:"data"`
 }
@@ -285,9 +292,10 @@ type AdminActStatisticItem struct {
 }
 
 type UserNotiFetchItem struct {
-	Type  string `json:"type"`
-	Token string `json:"token"`
-	Text  string `json:"text"`
+	Type     string   `json:"type"`
+	NotiType NotiType `json:"noti_type"`
+	Token    string   `json:"token"`
+	Text     string   `json:"text"`
 }
 
 type AdminUserListItem struct {

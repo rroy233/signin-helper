@@ -12,11 +12,14 @@ type CacheIDS struct {
 	Total   int   `json:"total"`
 	Easy    []int `json:"easy"`
 	Careful []int `json:"careful"`
+	Waiting []int `json:"waiting"`
 }
 
+type NotiType string
+
 const (
-	ACT_NOTI_TYPE_CH_NOTI   = "ch_noti"
-	ACT_NOTI_TYPE_TIME_WARN = "time_warn"
+	ACT_NOTI_TYPE_CH_NOTI   = NotiType("ch_noti")
+	ACT_NOTI_TYPE_TIME_WARN = NotiType("time_warn")
 )
 
 func cacheClass(classID int) (class *dbClass, err error) {
@@ -56,9 +59,10 @@ func cacheIDs(classID int) (ids *CacheIDS, err error) {
 	ids = new(CacheIDS)
 	ids.Easy = make([]int, 0)
 	ids.Careful = make([]int, 0)
+	ids.Waiting = make([]int, 0)
 
 	acts := make([]dbAct, 0)
-	err = db.Select(&acts, "select * from `activity` where `class_id`=? and `active`=?", classID, 1)
+	err = db.Select(&acts, "select * from `activity` where `class_id`=? and `active`!=?", classID, ActActiveInactive)
 	if err != nil {
 		return nil, err
 	}
@@ -71,9 +75,16 @@ func cacheIDs(classID int) (ids *CacheIDS, err error) {
 			return
 		}
 
+		//var bt int64
+		//bt, err = strconv.ParseInt(acts[i].BeginTime, 10, 64)
+		//if err != nil {
+		//	Logger.Error.Println("[cache][cacheIDs]解析时间失败:", err)
+		//	return
+		//}
+
 		//判断是否过期
 		if time.Now().Unix() > et {
-			//更新active
+			//已过期，更新active
 			_, err = db.Exec("update `activity` set `active` = ? where `act_id`=?", 0, acts[i].ActID)
 			if err != nil {
 				Logger.Error.Println("[cache][cacheIDs]更新active失败:", err)
@@ -82,6 +93,13 @@ func cacheIDs(classID int) (ids *CacheIDS, err error) {
 			Logger.Info.Println("[cache][cacheIDs]", acts[i].Name, "活动过期已处理。")
 			continue
 		}
+		//未开始
+		if acts[i].Active == ActActiveWait {
+			ids.Waiting = append(ids.Waiting, acts[i].ActID)
+			continue
+		}
+
+		//未过期
 		if et-time.Now().Unix() > 1*60 { //<1h >5min
 			ids.Easy = append(ids.Easy, acts[i].ActID)
 		} else if et-time.Now().Unix() < 1*60 {

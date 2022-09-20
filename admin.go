@@ -23,7 +23,12 @@ type FormDataAdminAct struct {
 	Pic          string `json:"pic"`
 	DailyNotify  bool   `json:"daily_notify"`
 	CheerText    string `json:"cheer_text"`
-	EndTime      struct {
+	NeedWait     bool   `json:"need_wait"`
+	BeginTime    struct {
+		D string `json:"d"`
+		T string `json:"t"`
+	} `json:"begin_time"`
+	EndTime struct {
 		D string `json:"d"`
 		T string `json:"t"`
 	} `json:"end_time"`
@@ -98,9 +103,13 @@ func adminActInfoHandler(c *gin.Context) {
 		res.Data.Pic = act.Pic
 	}
 	res.Data.CheerText = act.CheerText
-	if act.Active == 1 {
+	switch act.Active {
+	case ActActiveActive:
 		res.Data.Active = true
-	} else {
+	case ActActiveWait:
+		res.Data.Active = false
+		res.Data.NeedWait = true
+	default:
 		res.Data.Active = false
 	}
 
@@ -108,6 +117,10 @@ func adminActInfoHandler(c *gin.Context) {
 	et := strings.Split(ts2DateString(act.EndTime), " ")
 	res.Data.EndTime.D = et[0]
 	res.Data.EndTime.T = et[1][:5]
+
+	bt := strings.Split(ts2DateString(act.BeginTime), " ")
+	res.Data.BeginTime.D = bt[0]
+	res.Data.BeginTime.T = bt[1][:5]
 
 	//处理上传规则
 	if act.Type == ACT_TYPE_UPLOAD {
@@ -180,6 +193,23 @@ func adminActNewHandler(c *gin.Context) {
 		Logger.Info.Println("[管理员][创建活动]时间校验失败", err, auth)
 		returnErrorJson(c, "结束日期或时间无效")
 		return
+	}
+
+	//活动激活状态
+	active := ActActiveActive
+
+	//判断开始时间是否合法
+	var bt int64
+	if form.NeedWait == false {
+		bt = time.Now().Unix()
+	} else {
+		bt, err = dateString2ts(form.BeginTime.D + " " + form.BeginTime.T)
+		if err != nil || bt <= time.Now().Unix() {
+			Logger.Info.Println("[管理员][创建活动]时间校验失败", err, auth)
+			returnErrorJson(c, "开始日期或时间无效")
+			return
+		}
+		active = ActActiveWait
 	}
 
 	//校验图片地址
@@ -338,14 +368,14 @@ func adminActNewHandler(c *gin.Context) {
 	//更新数据库activity
 	dbrt, err := db.Exec("INSERT INTO `activity` (`act_id`, `class_id`,`active`,`type`, `name`, `announcement`, `cheer_text`, `pic`,`daily_noti_enabled`, `begin_time`, `end_time`, `create_time`, `update_time`, `create_by`,`file_opts`) VALUES (NULL, ?, ?,?, ?,?, ?, ?, ?,?, ?, ?, ?, ?,?);",
 		auth.ClassId,
-		1, //active
+		active, //active
 		actType,
 		form.Name,
 		form.Announcement,
 		form.CheerText,
 		picUrl,
 		dailyNoti, //每日提醒
-		strconv.FormatInt(time.Now().Unix(), 10),
+		strconv.FormatInt(bt, 10),
 		strconv.FormatInt(et, 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
 		strconv.FormatInt(time.Now().Unix(), 10),
@@ -374,9 +404,11 @@ func adminActNewHandler(c *gin.Context) {
 	}
 
 	//群发消息
-	err = newActBulkSend(auth.ClassId, act)
-	if err != nil {
-		Logger.Info.Println("[管理员][创建活动]群发时发生错误:", err, auth)
+	if act.Active == ActActiveActive {
+		err = newActBulkSend(auth.ClassId, act)
+		if err != nil {
+			Logger.Info.Println("[管理员][创建活动]群发时发生错误:", err, auth)
+		}
 	}
 
 	res := new(ResEmpty)
@@ -412,7 +444,7 @@ func adminActEditHandler(c *gin.Context) {
 	}
 
 	var formEtTS int64
-	//校验时间格式是否有效
+	//校验结束时间格式是否有效
 	endTime := ""
 	formEtTS, err = dateString2ts(form.EndTime.D + " " + form.EndTime.T)
 	dbEtString := ts2DateString(act.EndTime)
@@ -423,7 +455,7 @@ func adminActEditHandler(c *gin.Context) {
 		return
 	}
 	if formEtTS < time.Now().Unix() {
-		if form.Active == true {
+		if form.Active == true || form.NeedWait == true {
 			Logger.Info.Printf("[管理员][编辑活动信息]时间校验失败:%s != %s,%v\n", dbEtString, form.EndTime.D+" "+form.EndTime.T, auth)
 			returnErrorJson(c, "结束时间不能早于当前时间")
 			return
@@ -435,8 +467,7 @@ func adminActEditHandler(c *gin.Context) {
 			}
 		}
 	}
-
-	if form.Active == true {
+	if form.Active == true || form.NeedWait == true {
 		endTime = strconv.FormatInt(formEtTS, 10)
 	} else {
 		if act.Active == 0 {
@@ -450,6 +481,41 @@ func adminActEditHandler(c *gin.Context) {
 		} else {
 			endTime = strconv.FormatInt(time.Now().Unix(), 10)
 		}
+	}
+
+	//判断开始时间是否合法
+	var formBtTS int64
+	beginTime := strconv.FormatInt(time.Now().Unix(), 10)
+	formBtTS, err = dateString2ts(form.BeginTime.D + " " + form.BeginTime.T)
+	dbBtString := ts2DateString(act.BeginTime)
+	dbBtString = dbBtString[:len(dbBtString)-3]
+	if err != nil {
+		Logger.Info.Println("[管理员][编辑活动信息]时间校验失败", form.BeginTime.D+" "+form.BeginTime.T, err, auth)
+		returnErrorJson(c, "开始日期或时间无效")
+		return
+	}
+	if form.NeedWait == true && formEtTS < formBtTS {
+		returnErrorJson(c, "计划开始时间晚于结束时间")
+		return
+	}
+	if form.NeedWait == true {
+		if formBtTS < time.Now().Unix() {
+			returnErrorJson(c, "活动预约的开始时间不得早于当前时间")
+			return
+		}
+		beginTime = strconv.FormatInt(formBtTS, 10)
+	} else {
+		if dbBtString != form.BeginTime.D+" "+form.BeginTime.T {
+			returnErrorJson(c, "非「预约开启」状态无法修改开启时间")
+			return
+		}
+		beginTime = act.BeginTime
+	}
+	//取消预约
+	if act.Active == ActActiveWait && form.NeedWait == false && form.Active == false {
+		form.Name += "(已取消)"
+		beginTime = strconv.FormatInt(time.Now().Unix(), 10)
+		endTime = strconv.FormatInt(time.Now().Unix(), 10)
 	}
 
 	//校验图片地址
@@ -549,9 +615,11 @@ func adminActEditHandler(c *gin.Context) {
 		return
 	}
 
-	active := 0
-	if form.Active == true {
-		active = 1
+	active := ActActiveInactive
+	if form.Active == true && form.NeedWait == false {
+		active = ActActiveActive
+	} else if form.NeedWait == true {
+		active = ActActiveWait
 	}
 
 	//每日提醒开关
@@ -561,12 +629,13 @@ func adminActEditHandler(c *gin.Context) {
 	}
 
 	//更新数据库
-	_, err = db.Exec("UPDATE `activity` SET `name` = ?,`active`=?,`announcement`=?,`pic`=?,`cheer_text`=?,`end_time`=?,`update_time`=?,`daily_noti_enabled`=? WHERE `activity`.`act_id` = ?;",
+	_, err = db.Exec("UPDATE `activity` SET `name` = ?,`active`=?,`announcement`=?,`pic`=?,`cheer_text`=?,`begin_time`=?,`end_time`=?,`update_time`=?,`daily_noti_enabled`=? WHERE `activity`.`act_id` = ?;",
 		form.Name,
 		active,
 		form.Announcement,
 		picUrl,
 		form.CheerText,
+		beginTime,
 		endTime,
 		strconv.FormatInt(time.Now().Unix(), 10),
 		dailyNoti,
@@ -723,6 +792,7 @@ func adminActListHandler(c *gin.Context) {
 	res.Status = 0
 	res.Data.ActiveList = make([]*adminActListItem, 0)
 	res.Data.HistoryList = make([]*adminActListItem, 0)
+	res.Data.WaitingList = make([]*adminActListItem, 0)
 
 	//检查活动状态
 	_, err = getActIDs(auth.ClassId)
@@ -744,6 +814,7 @@ func adminActListHandler(c *gin.Context) {
 	}
 
 	activeCnt := 0
+	waitCnt := 0
 	HistoryCnt := 0
 	for i := range acts {
 		item := new(adminActListItem)
@@ -753,10 +824,14 @@ func adminActListHandler(c *gin.Context) {
 		item.EndTime = ts2DateString(acts[i].EndTime)
 		item.CreateBy = queryUserName(acts[i].CreateBy)
 		item.Type = acts[i].Type
-		if acts[i].Active == 1 {
+		if acts[i].Active == ActActiveActive {
 			activeCnt++
 			item.Id = activeCnt
 			res.Data.ActiveList = append(res.Data.ActiveList, item)
+		} else if acts[i].Active == ActActiveWait {
+			waitCnt++
+			item.Id = waitCnt
+			res.Data.WaitingList = append(res.Data.WaitingList, item)
 		} else {
 			HistoryCnt++
 			item.Id = HistoryCnt
@@ -765,6 +840,7 @@ func adminActListHandler(c *gin.Context) {
 	}
 
 	res.Data.ActiveNum = activeCnt
+	res.Data.WaitingNum = waitCnt
 	c.JSON(200, res)
 	return
 }

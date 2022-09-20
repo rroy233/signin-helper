@@ -20,23 +20,25 @@ import (
 var MailQueue chan *mailyak.MailYak
 var WechatQueue chan *NotifyJob
 
+type TplType int
+
 const (
-	TPL_MSGTYPE_newAct = iota
+	TPL_MSGTYPE_newAct = TplType(iota)
 	TPL_MSGTYPE_daily
 )
+
+type TplLevel int
+
 const (
-	TPL_LEVEL_LOW = iota
-	TPL_LEVEL_MID
-	TPL_LEVEL_HIGH
-	TPL_LEVEL_URGE
+	TPL_LEVEL_LOW = TplLevel(iota)
 )
 
 type NotifyJob struct {
-	NotificationType int    `json:"notification_type"`
-	Addr             string `json:"addr"`
-	Title            string `json:"title"`
-	Body             string `json:"body"`
-	Url              string `json:"url"`
+	NotificationType NotificationType `json:"notification_type"`
+	Addr             string           `json:"addr"`
+	Title            string           `json:"title"`
+	Body             string           `json:"body"`
+	Url              string           `json:"url"`
 }
 
 type wxMsgData struct {
@@ -56,9 +58,6 @@ func initMail() {
 
 //新活动通知，群发给班级的所有成员
 func newActBulkSend(classID int, act *dbAct) error {
-	if config.General.Production == false {
-		return nil
-	}
 	class, err := getClass(classID)
 	if err != nil {
 		return err
@@ -333,7 +332,7 @@ func pushInnerNoti(userID int, notiItem *UserNotiFetchItem) error {
 	return err
 }
 
-func makeActInnerNoti(actID int, userID int, actNotiType string) (*UserNotiFetchItem, error) {
+func makeActInnerNoti(actID int, userID int, actNotiType NotiType) (*UserNotiFetchItem, error) {
 	token := MD5_short(fmt.Sprintf("%d%d%s", userID, actID, actNotiType))
 	item := new(UserNotiFetchItem)
 	item.Token = token
@@ -341,9 +340,11 @@ func makeActInnerNoti(actID int, userID int, actNotiType string) (*UserNotiFetch
 	switch actNotiType {
 	case ACT_NOTI_TYPE_CH_NOTI:
 		item.Type = "info"
+		item.NotiType = "ACT_NOTI_TYPE_CH_NOTI"
 		item.Text = "请选择有效的\"通知方式\"以确保您能及时收到提醒推送"
 	case ACT_NOTI_TYPE_TIME_WARN:
 		item.Type = "warning"
+		item.NotiType = "ACT_NOTI_TYPE_TIME_WARN"
 		item.Text = "请您及时完成任务并进行签到"
 	default:
 		return nil, errors.New("actNotiType无效")
