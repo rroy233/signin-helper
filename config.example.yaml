@@ -43,3 +43,10 @@ statistics_report:
   v6_51_la: true
   v6_51_la_js1: ''
   v6_51_la_js2: ''
+
+logger:
+  stdout: true
+  storeFile: true
+  remoteReport: false
+  remoteReportUrl: "http://127.0.0.1/api/logUpload"
+  remoteReportQueryKey: "?key=xxxxx"

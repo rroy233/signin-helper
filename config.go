@@ -1,9 +1,10 @@
 package main
 
 import (
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"signin/Logger"
+
+	Logger "github.com/rroy233/logger"
+	"gopkg.in/yaml.v2"
 )
 
 var config *Struct
@@ -56,6 +57,13 @@ type Struct struct {
 		V651LaJs1 string `yaml:"v6_51_la_js1"`
 		V651LaJs2 string `yaml:"v6_51_la_js2"`
 	} `yaml:"statistics_report"`
+	Logger struct {
+		Stdout               bool   `yaml:"stdout"`
+		StoreFile            bool   `yaml:"storeFile"`
+		RemoteReport         bool   `yaml:"remoteReport"`
+		RemoteReportUrl      string `yaml:"remoteReportUrl"`
+		RemoteReportQueryKey string `yaml:"remoteReportQueryKey"`
+	}
 }
 
 // getConfig 读取配置文件并返回

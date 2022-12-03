@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/url"
 	"os"
-	"signin/Logger"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	Logger "github.com/rroy233/logger"
 )
 
 func viewIndex(c *gin.Context) {

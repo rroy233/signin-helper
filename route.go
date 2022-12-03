@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/gin-contrib/pprof"
-	"github.com/gin-gonic/gin"
 	"io"
 	"os"
-	"signin/Logger"
+
+	"github.com/gin-contrib/pprof"
+	"github.com/gin-gonic/gin"
+	Logger "github.com/rroy233/logger"
 )
 
 func init() {

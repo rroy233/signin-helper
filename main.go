@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	"log"
-	"signin/Logger"
 	sso "signin/SSO"
 	"signin/cipher"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	Logger "github.com/rroy233/logger"
 )
 
 var BackEndVer string
@@ -16,7 +17,15 @@ var TZ = time.FixedZone("CST", 8*3600)
 var Cipher *cipher.Cipher
 
 func main() {
-	Logger.New(config.General.Production)
+	Logger.New(&Logger.Config{
+		StdOutput:      config.Logger.Stdout,
+		StoreLocalFile: config.Logger.StoreFile,
+		StoreRemote:    config.Logger.RemoteReport,
+		RemoteConfig: Logger.RemoteConfigStruct{
+			RequestUrl: config.Logger.RemoteReportUrl,
+			QueryKey:   config.Logger.RemoteReportQueryKey,
+		},
+	})
 	initDB()
 	initRedis()
 	initMail()

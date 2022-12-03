@@ -4,13 +4,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"math/rand"
 	"net/url"
-	"signin/Logger"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	Logger "github.com/rroy233/logger"
 )
 
 func UserMiddleware(c *gin.Context) {

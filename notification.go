@@ -6,15 +6,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/domodwyer/mailyak/v3"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/smtp"
-	"signin/Logger"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/domodwyer/mailyak/v3"
+	Logger "github.com/rroy233/logger"
 )
 
 var MailQueue chan *mailyak.MailYak

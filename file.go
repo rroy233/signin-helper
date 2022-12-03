@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/tencentyun/cos-go-sdk-v5"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"signin/Logger"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	Logger "github.com/rroy233/logger"
+	"github.com/tencentyun/cos-go-sdk-v5"
 )
 
 var cosClient *cos.Client
