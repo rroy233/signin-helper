@@ -31,7 +31,20 @@ func viewIndex(c *gin.Context) {
 	c.Data(200, ContentTypeHTML, data)
 }
 
-func viewReg(c *gin.Context) {
+func viewRegister(c *gin.Context) {
+
+}
+
+func viewLogin(c *gin.Context) {
+	data := views("login")
+	c.Data(200, ContentTypeHTML, data)
+}
+
+func viewForget(c *gin.Context) {
+
+}
+
+func viewInit(c *gin.Context) {
 	auth, err := getAuthFromContext(c)
 	if err != nil {
 		redirectToLogin(c)
@@ -42,11 +55,11 @@ func viewReg(c *gin.Context) {
 		return
 	}
 	if auth.IsAdmin == 1 {
-		c.Data(200, ContentTypeHTML, views("reg", map[string]string{
+		c.Data(200, ContentTypeHTML, views("init", map[string]string{
 			"is_admin": "yes",
 		}))
 	} else {
-		c.Data(200, ContentTypeHTML, views("reg"))
+		c.Data(200, ContentTypeHTML, views("init"))
 	}
 
 }
@@ -59,7 +72,7 @@ func viewError(c *gin.Context) {
 	c.Data(404, ContentTypeHTML, views("error1", map[string]string{"text": txt}))
 }
 
-//模板加载函数
+// 模板加载函数
 func views(template string, params ...map[string]string) (html []byte) {
 	name := ""
 	data := make([]string, 0)

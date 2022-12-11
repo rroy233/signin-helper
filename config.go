@@ -18,8 +18,9 @@ type Struct struct {
 		JwtKey       string `yaml:"jwt_key"`
 		AESKey       string `yaml:"AES_key"`
 		AESIv        string `yaml:"AES_iv"`
+		MD5Salt      string `yaml:"MD5_salt"`
 		RandomPicAPI string `yaml:"random_pic_api"`
-	} `yaml:"genenral"`
+	} `yaml:"general"`
 	Db struct {
 		Server    string `yaml:"server"`
 		Port      string `yaml:"port"`
@@ -31,6 +32,7 @@ type Struct struct {
 		RedisDb   int    `yaml:"redis_db"`
 	} `yaml:"db"`
 	SSO struct {
+		Enabled      bool   `yaml:"enabled"`
 		ServiceName  string `yaml:"service_name"`
 		ClientId     string `yaml:"client_id"`
 		ClientSecret string `yaml:"client_secret"`

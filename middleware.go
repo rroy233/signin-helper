@@ -44,9 +44,9 @@ func authorizationMiddleware(c *gin.Context, isAdmin int) {
 		c.Abort()
 		return
 	}
-	if auth.ClassId == 0 && c.FullPath() != "/api/user/init" && c.FullPath() != "/user/reg" {
+	if auth.ClassId == 0 && c.FullPath() != "/api/user/init" && c.FullPath() != "/user/init" {
 		//未完成初始化
-		c.Redirect(302, "/user/reg")
+		c.Redirect(302, "/user/init")
 		c.Abort()
 		return
 	}
@@ -91,7 +91,12 @@ func middleWareRedirect(c *gin.Context) {
 	if strings.Contains(c.FullPath(), "/api/") == true {
 		returnErrorJson(c, "未授权访问")
 	} else {
-		c.Redirect(302, "/sso?redirect="+url.PathEscape(c.FullPath()))
+		if config.SSO.Enabled {
+			c.Redirect(302, "/sso?redirect="+url.PathEscape(c.FullPath()))
+		} else {
+			c.Redirect(302, "/login")
+		}
+
 	}
 }
 
@@ -104,7 +109,7 @@ func redirectToLogin(c *gin.Context) {
 	c.Redirect(302, "/sso")
 }
 
-//生成csrfToken
+// 生成csrfToken
 func csrfMake(jwtID string, c *gin.Context) (r string, err error) {
 	tmp := rdb.Get(ctx, "SIGNIN_APP:csrfToken:"+jwtID).Val()
 	if tmp == "" {
@@ -127,7 +132,7 @@ func Sha256(data []byte) []byte {
 	return digest.Sum(nil)
 }
 
-//验证csrfToken
+// 验证csrfToken
 func csrfVerify(token string, auth *JWTStruct) (err error) {
 	if auth.ClassId == 0 {
 		//未初始化

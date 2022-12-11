@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"strconv"
 	"time"
 )
@@ -44,4 +45,18 @@ func mkShortUrlToken(url string, exp time.Duration) (string, error) {
 		return "", err
 	}
 	return token, err
+}
+
+func setCookie(c *gin.Context, name string, value string, maxAge int) {
+	c.SetCookie(name, value, maxAge, "", "", true, false)
+}
+
+// getIP 获取ip
+func getIP(c *gin.Context) string {
+	ip := c.GetHeader("X-Real-IP")
+	if ip == "" {
+		// 当请求头不存在即不存在代理时直接获取ip
+		ip = c.ClientIP()
+	}
+	return ip
 }

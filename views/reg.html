@@ -9,7 +9,7 @@
     <meta name='format-detection' content='telephone=no'>
     <meta http-equiv='Cache-Control' content='no-siteapp'/>
     <link href="/static/favicon.ico" type="image/x-icon" rel="shortcut icon">
-    <title>初始化 | 签到系统</title>
+    <title>注册 | 签到系统</title>
     <link href="https://web-static-1304188470.file.myqcloud.com/css/materialdesignicons.min.css" rel="stylesheet">
     <link href="https://web-static-1304188470.file.myqcloud.com/css/vuetify.min.css" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
@@ -24,63 +24,113 @@
         <v-main>
             <!--  -->
             <v-container>
-                <div class="mt-12 mx-auto px-6">
-                    <div class="text-h4 mb-5">
-                        账号初始化
+                <div class="py-5">
+                    <div class="text-h4 mb-3">找回密码</div>
+                    <div class="text-caption">在完成邮箱验证后即可更改密码。</div>
+                    <div class="text-caption">
+                        收不到验证码可能是因为您拒收了我们的邮件或邮件在垃圾箱，<br />
+                        请尝试将<code>no-reply@roy233.com</code>加入到白名单
                     </div>
-                    <div class="text-caption mb-5">
-                        感谢您使用本系统，在开始之前，您需要完成账号的初始化。
-                        <br>
-                        如果您是管理员，您可以选择加入一个现有的班级，或者新建一个新的班级。
-                    </div>
-
-                    <v-radio-group
-                            v-model="opt"
-                            row
-                    >
-                        <v-radio
-                                label="加入班级"
-                                value="join"
-                        ></v-radio>
-                        <v-radio
-                                label="新建班级"
-                                value="new"
-                                :disabled="!is_admin"
-                        ></v-radio>
-                    </v-radio-group>
-                    <v-text-field
-                            label="班级代码"
-                            v-model="class_code"
-                            v-if="class_code!='new'"
-                            hint="请填写班级管理员提供的代码"
-                            outlined
-                    ></v-text-field>
-                    <v-text-field
-                            label="真实姓名"
-                            v-model="name"
-                            hint="一旦设置便无法更改"
-                            outlined
-                    ></v-text-field>
-                    <div class="d-flex flex-row">
-                        <v-btn depressed large
-                               @click="submit"
-                        >
-                            提交
-                        </v-btn>
-                    </div>
-
                 </div>
-            </v-container>
 
-            <v-dialog v-model="dialog.open" max-width="500px">
-                <v-card>
-                    <v-card-title>{{dialog.title}}</v-card-title>
+                <v-card class="my-3 " v-if="step >= 0">
+                    <v-card-title>1.获取验证码邮件</v-card-title>
                     <v-card-text>
-                        {{dialog.text}}
+                        <v-row>
+                            <v-col cols="12">
+                                <div class="ma-auto">
+                                    <v-text-field
+                                            label="邮箱地址"
+                                            v-model="email"
+                                            outlined
+                                    ></v-text-field>
+                                </div>
+                            </v-col>
+                        </v-row>
+                        <v-row class="d-flex flex-wrap justify-center">
+                            <v-img
+                                    :src="captcha.img"
+                                    max-width="210px"
+                                    max-height="70px"
+                                    @click="getCaptcha"
+                            ></v-img>
+                            <v-text-field
+                                    class="ma-2"
+                                    v-model="captcha.input"
+                                    label="验证码"
+                                    width="210px"
+                                    outlined
+                            ></v-text-field>
+                        </v-row>
                     </v-card-text>
                     <v-card-actions>
                         <v-spacer></v-spacer>
-                        <v-btn color="blue darken-1" text @click="dialog.open=!dialog.open">OK</v-btn>
+                        <v-btn
+                                text
+                                color="primary"
+                                :disabled="send_btn.disabled"
+                                v-text="send_btn.text"
+                                :loading="send_btn.loading"
+                                @click="send"
+                                large
+                        ></v-btn>
+                    </v-card-actions>
+                </v-card>
+
+                <v-card class="my-3" v-if="step >= 1">
+                    <v-card-title>2.填写验证码</v-card-title>
+                    <v-card-text>
+                        <v-row>
+                            <v-col cols="9">
+                                <div class="ma-auto" style="max-width: 300px">
+                                    <v-otp-input v-model="code" length="6"></v-otp-input>
+                                </div>
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </v-card>
+                <v-card class="my-3" v-if="step >= 1">
+                    <v-card-title>3.输入新密码</v-card-title>
+                    <v-card-text>
+                        <v-row>
+                            <v-col cols="9">
+                                <div class="ma-auto" style="max-width: 300px">
+                                    <v-text-field
+                                            label="请输入新密码"
+                                            v-model="pass0"
+                                            type="password"
+                                            outlined
+                                    ></v-text-field>
+                                    <v-text-field
+                                            label="请再次输入新密码"
+                                            v-model="pass1"
+                                            type="password"
+                                            outlined
+                                    ></v-text-field>
+                                </div>
+                            </v-col>
+
+                            <v-col cols="2" class="my-3">
+                                <v-btn depressed large color="primary" @click="submit"
+                                >提交</v-btn
+                                >
+                            </v-col>
+                        </v-row>
+                    </v-card-text>
+                </v-card>
+            </v-container>
+            <!-- 提示框 -->
+            <v-dialog v-model="dialog.open" max-width="450px">
+                <v-card>
+                    <v-card-title>{{ dialog.title }}</v-card-title>
+                    <v-card-text>
+                        {{ dialog.text }}
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" text @click="dialog.open = !dialog.open"
+                        >OK</v-btn
+                        >
                     </v-card-actions>
                 </v-card>
             </v-dialog>
@@ -95,76 +145,162 @@
 <script>
 
     const backEndUrl = "{{api_url}}";
-    const isAdmin = "{{is_admin}}";
     new Vue({
         el: '#app',
         vuetify: new Vuetify(),
-        data:{
-            class_code:'',
-            name:'',
-            dialog:{
-                open:false,
-                title:'',
-                text:'',
+        data: function () {
+            return {
+                dialog: {
+                    open: false,
+                    title: "",
+                    text: "",
+                },
+                email: "",
+                code: "",
+                token: "",
+                send_btn: {
+                    disabled: false,
+                    loading: false,
+                    text: "发送",
+                },
+                count: 0,
+                timer: null,
+                pass0: "",
+                pass1: "",
+                step: 0,
+                captcha: {
+                    enabled: true,
+                    img: "",
+                    input: "",
+                },
+            };
+        },
+        mounted: function () {
+            this.getCaptcha();
+        },
+        methods: {
+            getCaptcha: function () {
+                this.captcha.input = "";
+                axios({
+                    url: "/api/captcha",
+                    method: "get",
+                })
+                    .then((res) => {
+                        if (res.data.status == 0) {
+                            //ok
+                            this.captcha.enabled = true;
+                            this.captcha.img = res.data.data.image;
+                        } else {
+                            this.error(this.parseError(res));
+                        }
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                        this.error("登录失败:" + err);
+                    });
             },
-            opt:"join",
-            is_admin:false,
-        },
-        mounted:function(){
-            if (isAdmin == "yes"){
-                this.is_admin = true
-            }else{
-                this.is_admin = false
-            }
-        },
-        methods:{
-            submit:function(){
-                let _this = this
-                if (this.class_code == "" || this.name == ""){
-                    this.error("信息不能为空")
-                    return
+            send: function () {
+                var _this = this;
+                if (this.captcha.input===""){
+                    this.error("验证码不能为空");
+                    return;
+                }
+                if (this.emailt===""){
+                    this.error("邮箱地址不能为空");
+                    return;
                 }
                 axios({
-                    method: 'post',
-                    url: backEndUrl+'/api/user/init',
+                    url: "/api/auth/forget",
+                    method: "post",
                     data: {
-                        class_code: this.class_code,
-                        name: this.name,
-                    }
-                }).then(function (res) {
-                    // 处理成功情况
-                    if (res.data.status == 0){
-                        setTimeout(function (){window.location.href = "/api/login?jwt="+res.data.data.new_jwt; },2000)
-                        _this.success("初始化成功")
-                    }else{
-                        _this.error(res.data.msg)
-                    }
+                        step: 1,
+                        data0: this.email,
+                        data1: this.captcha.input,
+                    },
                 })
-                    .catch(function (error) {
-                        // 处理错误情况
-                        _this.error(error)
+                    .then((res) => {
+                        if (res.data.status == 0) {
+                            this.send_btn.disabled = true;
+                            this.count = 61;
+                            this.count_down();
+                            this.timer = setInterval(function () {
+                                _this.count_down();
+                            }, 1000);
+                            this.success("发送成功，请注意查收！");
+                            this.step++;
+                            this.token = res.data.data.token;
+                            this.getCaptcha();
+                        } else {
+                            switch (res.data.status) {
+                                case -1007:
+                                    this.getCaptcha();
+                                    break
+                                case -1008:
+                                    this.getCaptcha();
+                                    this.captcha.input = "";
+                                    this.error("验证码有误");
+                                    break
+                                default:
+                                    this.error(this.parseError(res));
+                            }
+                        }
                     })
+                    .catch((err) => {
+                        this.error("失败:" + err);
+                    });
             },
-            success:function(text){
-                this.dialog.open = true
-                this.dialog.title = '成功'
-                this.dialog.text = text
+            count_down: function () {
+                this.count--;
+                this.send_btn.text = "重新发送(" + this.count + "秒)";
+                if (this.count < 1) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                    this.send_btn.text = "重新发送";
+                    this.send_btn.disabled = false;
+                }
             },
-            error:function(text){
-                this.dialog.open = true
-                this.dialog.title = '失败'
-                this.dialog.text = text
+            submit: function () {
+                if (this.pass0 != this.pass1) {
+                    this.error("密码不一致");
+                    return;
+                }
+                axios({
+                    url: "/api/auth/forget?token=" + this.token,
+                    method: "post",
+                    data: {
+                        step: 2,
+                        data0: this.code,
+                        data1: this.pass0,
+                    },
+                })
+                    .then((res) => {
+                        if (res.data.status == 0) {
+                            this.success("修改成功");
+                            setTimeout(function () {
+                                window.location.href = "/";
+                            }, 1000);
+                        } else {
+                            this.error(res.data.msg);
+                        }
+                    })
+                    .catch((err) => {
+                        this.error("失败:" + err);
+                    });
+            },
+            success: function (text) {
+                this.dialog.open = true;
+                this.dialog.title = "提示";
+                this.dialog.text = text;
+            },
+            error: function (err) {
+                this.dialog.open = true;
+                this.dialog.title = "oops!";
+                this.dialog.text = err;
+            },
+            show_loading: function () {
+                this.loader = "loading";
             },
         },
-        watch: {
-            opt:function (now){
-                if (now === "new"){
-                    this.class_code = "new"
-                }else{
-                    this.class_code = ""
-                }
-            }
-        }
     })
 </script>
 </body>

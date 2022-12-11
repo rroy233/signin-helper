@@ -224,7 +224,7 @@ type ResAdminActGetRandomPic struct {
 	} `json:"data"`
 }
 
-//自定义数据结构
+// 自定义数据结构
 type actStatisticUser struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
@@ -308,7 +308,23 @@ type AdminUserListItem struct {
 	Sign     string `json:"sign"`
 }
 
-//函数
+type ResLoginSuccess struct {
+	Status int    `json:"status"`
+	Msg    string `json:"msg"`
+	Data   struct {
+		Token string `json:"token"`
+	} `json:"data"`
+}
+
+type ResCaptcha struct {
+	Status int    `json:"status"`
+	Msg    string `json:"msg"`
+	Data   struct {
+		Image string `json:"image"`
+	} `json:"data"`
+}
+
+// 函数
 func errorRes(msg string) (r *ResEmpty) {
 	r = new(ResEmpty)
 	r.Status = -1

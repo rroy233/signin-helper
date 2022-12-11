@@ -57,7 +57,7 @@ func initMail() {
 	WechatQueue = make(chan *NotifyJob, 50)
 }
 
-//新活动通知，群发给班级的所有成员
+// 新活动通知，群发给班级的所有成员
 func newActBulkSend(classID int, act *dbAct) error {
 	class, err := getClass(classID)
 	if err != nil {
@@ -236,7 +236,7 @@ func wechatSender(queue chan *NotifyJob) {
 	}
 }
 
-//解析并替换模板中的参数
+// 解析并替换模板中的参数
 func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) string {
 
 	s = strings.Replace(s, "{{EOL}}", "<br>", -1)
@@ -269,7 +269,7 @@ func parseEmailTemplate(s string, user *dbUser, class *dbClass, act *dbAct) stri
 			Logger.Error.Println("[解析模板]生成jwt失败", err)
 			s = strings.Replace(s, "{{login_url_withToken}}", token, -1)
 		} else {
-			loginUrl := fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, jwtEncoded, Cipher.Sha256Hex([]byte(jwtEncoded)))
+			loginUrl := fmt.Sprintf("%s/api/loginByToken?jwt=%s.%s", config.General.BaseUrl, jwtEncoded, Cipher.Sha256Hex([]byte(jwtEncoded)))
 			urlToken, err := mkShortUrlToken(loginUrl, 40*time.Minute)
 			if err != nil {
 				Logger.Error.Println("[解析模板]签发登录凭证失败", err)
@@ -320,7 +320,7 @@ func parseWechatBodyTitle(s string, user *dbUser, class *dbClass, act *dbAct, ta
 	return s
 }
 
-//推送站内信息
+// 推送站内信息
 func pushInnerNoti(userID int, notiItem *UserNotiFetchItem) error {
 	if notiItem == nil {
 		return errors.New("notiItem为空")
@@ -379,7 +379,7 @@ func makeInnerNoti(userID int) (*UserNotiFetchItem, error) {
 	return item, nil
 }
 
-//获取用户特定活动已提醒次数
+// 获取用户特定活动已提醒次数
 func actNotiUserTimesGet(ActID int, userID int) (int, error) {
 	tmp, err := rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", ActID, userID)).Result()
 	if err != nil {
@@ -389,7 +389,7 @@ func actNotiUserTimesGet(ActID int, userID int) (int, error) {
 	return data, nil
 }
 
-//存储用户特定活动已提醒次数
+// 存储用户特定活动已提醒次数
 func actNotiUserTimesIncr(act *dbAct, userID int) (err error) {
 	if rdb.Get(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID)).Val() == "" {
 		err = rdb.Set(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", act.ActID, userID), 0, 30*24*time.Hour).Err()
@@ -399,7 +399,7 @@ func actNotiUserTimesIncr(act *dbAct, userID int) (err error) {
 	return err
 }
 
-//删除用户特定活动已提醒次数
+// 删除用户特定活动已提醒次数
 func actNotiUserTimesDel(ActID int, userID int) error {
 	err := rdb.Del(ctx, fmt.Sprintf("SIGNIN_APP:ActNotiTimes:%d:%d", ActID, userID)).Err()
 	return err

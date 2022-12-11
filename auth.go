@@ -1,12 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	Logger "github.com/rroy233/logger"
+	"github.com/steambap/captcha"
 	"net/url"
 	"strconv"
 	"strings"
@@ -20,6 +25,12 @@ type JWTStruct struct {
 	ClassId int    `json:"class_id"`
 	IsAdmin int    `json:"is_admin"`
 	jwt.RegisteredClaims
+}
+
+type LoginData struct {
+	Email    string `json:"email" binding:"required"`
+	PassWord string `json:"password" binding:"required"`
+	Captcha  string `json:"captcha"`
 }
 
 type WxPusherCallback struct {
@@ -105,6 +116,142 @@ func verifyJWTSigning(tokenString string, checkRedis bool) (auth *JWTStruct, err
 	return auth, err
 }
 
+func loginHandler(c *gin.Context) {
+	ip := getIP(c)
+
+	Logger.Info.Println("[登录]IP:", ip, "尝试登录，c.Request:", c.Request)
+
+	loginInfo := new(LoginData)
+	err := c.ShouldBindJSON(loginInfo)
+	if err != nil {
+		returnErrorJson(c, "请输入邮箱地址和密码")
+		return
+	}
+
+	checkDB()
+
+	//检查黑名单
+	num, err := blackListCheck(c)
+	if err != nil {
+		returnErrorJson(c, err.Error())
+		return
+	}
+	//验证码
+	if num > 0 {
+		if loginInfo.Captcha == "" {
+			returnErrorJson(c, "ResErrorNeedCaptcha")
+			return
+		}
+		//校验验证码
+		captchaAnswer := rdb.Get(ctx, "SIGNIN_APP:Captcha:"+MD5(getCookie(c, "_uuid"))).Val()
+		if captchaAnswer == "" {
+			returnErrorJson(c, "请重新获取验证码")
+			return
+		}
+		rdb.Del(ctx, "SIGNIN_APP:Captcha:"+MD5(getCookie(c, "_uuid")))
+		if strings.ToLower(loginInfo.Captcha) != captchaAnswer {
+			blackListStore(c)
+			returnErrorJson(c, "验证码错误")
+			return
+		}
+		//清除黑名单
+		blackListDel(c)
+	}
+
+	if govalidator.IsEmail(loginInfo.Email) == false {
+		blackListStore(c)
+		returnErrorJson(c, "邮箱地址无效")
+		return
+	}
+
+	user := new(dbUser)
+	err = db.Get(user, "SELECT * FROM `user` WHERE `email` = ?", loginInfo.Email)
+	if err != nil {
+		Logger.Info.Println("登录失败，用户不存在.IP:", getIP(c))
+		returnErrorJson(c, "邮箱或密码错误")
+		blackListStore(c)
+		return
+	}
+
+	if user.Password != MD5(loginInfo.PassWord+config.General.MD5Salt) {
+		//登录失败
+		Logger.Info.Println("登录失败，邮箱或密码错误.IP:", getIP(c), ":", c.Request)
+		returnErrorJson(c, "邮箱或密码错误")
+		blackListStore(c)
+		return
+	}
+
+	//正常签发jwt
+	expTime := time.Hour
+	if config.General.Production == false {
+		expTime = 13 * time.Hour
+		Logger.Debug.Println("[JWT]已颁发测试环境JWT")
+	}
+	jID := generateJwtID()
+	token, err := generateJwt(user, jID, expTime)
+	if err != nil {
+		Logger.Error.Println("[正常签发JWT]失败:", err)
+		returnErrorView(c, "系统异常")
+		return
+	}
+	storeToken(c, token) //存入cookie
+	_, err = csrfMake(jID, c)
+	if err != nil {
+		Logger.Info.Println("[用户csrf]发生错误", err)
+		returnErrorView(c, "返回csrfToken失败")
+		return
+	}
+
+	ress := new(ResLoginSuccess)
+	ress.Status = 0
+	ress.Msg = "success"
+	ress.Data.Token = token
+	c.JSON(200, ress)
+
+	return
+}
+
+func registerHandler(c *gin.Context) {
+
+}
+
+func forgetHandler(c *gin.Context) {
+
+}
+
+func captchaHandler(c *gin.Context) {
+	loggerPrefix := "[captchaHandler]"
+	res := new(ResCaptcha)
+	res.Status = 0
+
+	data, err := captcha.New(210, 70)
+	if err != nil {
+		Logger.Error.Println(loggerPrefix+"生成验证码失败：", err)
+		returnErrorJson(c, "生成验证码失败")
+		return
+	}
+
+	img := bytes.NewBuffer(nil)
+	err = data.WriteImage(img)
+	if err != nil {
+		Logger.Error.Println(loggerPrefix+"验证码图片输出失败：", err)
+		returnErrorJson(c, "生成验证码失败")
+		return
+	}
+
+	//存储
+	uid := uuid.New().String()
+	setCookie(c, "_uuid", uid, 3600)
+	rdb.Set(ctx, "SIGNIN_APP:Captcha:"+MD5(uid), strings.ToLower(data.Text), 5*time.Minute)
+	//验证时使用:
+	//captchaAnswer := rdb.Get(ctx, "SIGNIN_APP:Captcha:"+MD5(getCookie(c, "_uuid"))).Val()
+
+	res.Data.Image = "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(img.Bytes())
+
+	c.JSON(200, res)
+	return
+}
+
 func ssoCallBackHandler(c *gin.Context) {
 
 	accessToken := c.Query("access_token")
@@ -168,7 +315,7 @@ func ssoCallBackHandler(c *gin.Context) {
 		//存入cookie
 		storeToken(c, token)
 
-		c.Redirect(302, "/user/reg")
+		c.Redirect(302, "/user/init")
 		return
 	}
 
@@ -198,7 +345,7 @@ func ssoCallBackHandler(c *gin.Context) {
 
 }
 
-//吊销jwt
+// 吊销jwt
 func killJwtByJID(jID string) error {
 	keys := rdb.Keys(ctx, "*:"+jID).Val()
 	if len(keys) == 0 {
@@ -235,7 +382,7 @@ func killJwtByUID(UID int) {
 	return
 }
 
-func loginHandler(c *gin.Context) {
+func loginByTokenHandler(c *gin.Context) {
 	tmp := c.Query("jwt")
 	if tmp == "" {
 		returnErrorView(c, "参数无效(-1)")
@@ -382,4 +529,42 @@ func storeToken(c *gin.Context, token string) {
 
 func generateJwtID() string {
 	return MD5_short(strconv.FormatInt(time.Now().UnixNano(), 10) + config.General.JwtKey)
+}
+
+func blackListDel(c *gin.Context) {
+	ip := getIP(c)
+	//查看黑名单
+	if rdb.Get(ctx, "BL:Account:"+ip).Val() != "" {
+		rdb.Del(ctx, "BL:Account:"+ip)
+	}
+}
+
+func blackListCheck(c *gin.Context) (int, error) {
+	ip := getIP(c)
+	//查看黑名单
+	if rdb.Get(ctx, "SIGNIN_APP:BL:"+ip).Val() != "" {
+		return 0, errors.New("您已被封禁30分钟")
+	}
+
+	loginNum := rdb.Get(ctx, "SIGNIN_APP:BL:Account:"+ip).Val()
+	if loginNum == "" {
+		rdb.Set(ctx, "SIGNIN_APP:BL:Account:"+ip, 0, 3*time.Minute)
+	}
+	loginLimitInt, _ := strconv.Atoi(loginNum)
+	if loginLimitInt > 30 {
+		//放入黑名单，30分钟解除
+		rdb.Set(ctx, "SIGNIN_APP:BL:"+ip, "BL", 30*time.Minute)
+		Logger.Info.Println("[黑名单]新狱友IP:", ip)
+		return loginLimitInt, errors.New("您已被封禁30分钟")
+	}
+	return loginLimitInt, nil
+}
+
+func blackListStore(c *gin.Context) {
+	ip := getIP(c)
+	if rdb.Get(ctx, "SIGNIN_APP:BL:Account:"+ip).Val() == "" {
+		rdb.Set(ctx, "SIGNIN_APP:BL:Account:"+ip, 1, 24*time.Hour)
+	} else {
+		rdb.Incr(ctx, "SIGNIN_APP:BL:Account:"+ip)
+	}
 }

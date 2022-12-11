@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no'/>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1'/>
+    <meta name='renderer' content='webkit'>
+    <meta name='format-detection' content='telephone=no'>
+    <meta http-equiv='Cache-Control' content='no-siteapp'/>
+    <link href="/static/favicon.ico" type="image/x-icon" rel="shortcut icon">
+    <title>登录 | 签到系统</title>
+    <link href="https://web-static-1304188470.file.myqcloud.com/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://web-static-1304188470.file.myqcloud.com/css/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+<body>
+<div id="app">
+    <v-app id="inspire">
+        <v-app-bar app>
+            <v-toolbar-title>签到系统</v-toolbar-title>
+        </v-app-bar>
+
+        <v-main>
+            <!--  -->
+            <v-container>
+                <div class="mt-12 mx-auto px-6">
+                    <div class="text-h4 mb-5">
+                        登录
+                    </div>
+                    <v-text-field
+                            label="邮箱"
+                            v-model="email"
+                            hint="请填写邮箱地址"
+                            :disabled="disable_input"
+                            outlined
+                    ></v-text-field>
+                    <v-text-field
+                            label="密码"
+                            v-model="password"
+                            hint="请填写密码"
+                            :disabled="disable_input"
+                            outlined
+                    ></v-text-field>
+                    <v-row v-if="captcha.enabled" class="mx-1">
+                        <v-img
+                                :src="captcha.img"
+                                max-width="210px"
+                                max-height="70px"
+                                @click="getCaptcha"
+                        ></v-img>
+                        <v-text-field
+                                class="ma-2"
+                                v-model="captcha.input"
+                                :disabled="disable_input"
+                                label="验证码"
+                                outlined
+                        ></v-text-field>
+                    </v-row>
+                    <div class="d-flex flex-row">
+                        <v-btn depressed large
+                               @click="submit"
+                               :loading="disable_input"
+                        >
+                            提交
+                        </v-btn>
+                    </div>
+
+                </div>
+            </v-container>
+
+            <v-dialog v-model="dialog.open" max-width="500px">
+                <v-card>
+                    <v-card-title>{{dialog.title}}</v-card-title>
+                    <v-card-text>
+                        {{dialog.text}}
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" text @click="dialog.open=!dialog.open">OK</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-main>
+
+    </v-app>
+</div>
+<script src="https://web-static-1304188470.file.myqcloud.com/js/vue.min.js"></script>
+<script src="https://web-static-1304188470.file.myqcloud.com/js/vuetify.min.js"></script>
+<script src="https://web-static-1304188470.file.myqcloud.com/js/axios.min.js"></script>
+<script>
+
+    const backEndUrl = "{{api_url}}";
+    new Vue({
+        el: '#app',
+        vuetify: new Vuetify(),
+        data:{
+            dialog:{
+                open:false,
+                title:'',
+                text:'',
+            },
+            captcha: {
+                enabled: false,
+                img: "",
+                input: "",
+            },
+            email:"oisroy233@gmail.com",
+            password:"test",
+            is_admin:false,
+            disable_input:false,
+        },
+        mounted:function(){
+
+        },
+        methods:{
+            submit:function(){
+                let _this = this
+                this.disable_input = true;
+                if (!(this.email || this.password)) {
+                    this.error("请输入邮箱和密码");
+                    return;
+                }
+                axios({
+                    method: 'post',
+                    url: backEndUrl+'/api/login',
+                    data: {
+                        email: this.email,
+                        password: this.password,
+                        captcha: this.captcha.input,
+                    }
+                }).then(function (res) {
+                    // 处理成功情况
+                    if (res.data.status == 0){
+                        _this.success("ok");
+                    }else{
+                        if(res.data.msg=="ResErrorNeedCaptcha"){
+                            _this.error("请输入验证码");
+                        }else{
+                            _this.error(res.data.msg);
+                        }
+                        _this.getCaptcha();
+                        _this.disable_input = false;
+                    }
+                })
+                    .catch(function (error) {
+                        // 处理错误情况
+                        _this.error(error)
+                    })
+            },
+            getCaptcha: function () {
+                this.captcha.input = "";
+                axios({
+                    url: "/api/captcha",
+                    method: "get",
+                })
+                    .then((res) => {
+                        if (res.data.status == 0) {
+                            //ok
+                            this.captcha.enabled = true;
+                            this.captcha.img = res.data.data.image;
+                        } else {
+                            this.error(this.parseError(res));
+                        }
+                    })
+                    .catch((err) => {
+                        console.log(err);
+                        this.error("登录失败:" + err);
+                    });
+            },
+            success:function(text){
+                this.dialog.open = true
+                this.dialog.title = '成功'
+                this.dialog.text = text
+            },
+            error:function(text){
+                this.dialog.open = true
+                this.dialog.title = '失败'
+                this.dialog.text = text
+            },
+        },
+        watch: {
+            opt:function (now){
+                if (now === "new"){
+                    this.class_code = "new"
+                }else{
+                    this.class_code = ""
+                }
+            }
+        }
+    })
+</script>
+</body>
+</html>

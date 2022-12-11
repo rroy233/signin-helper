@@ -1,10 +1,12 @@
-genenral:
+general:
   production: false
   base_url: "http://localhost:9093"
   listen_port: "9093"
-  jwt_key: ""
+  jwt_key: "github.com/rroy233"
   AES_key: "12345678901234567890123456789012"
   AES_iv: "1234567890123456"
+  MD5_salt: "github.com/rroy233"
+  # 随机图片获取api，创建活动时将调用，接口返回图片
   random_pic_api: ""
 
 db:
@@ -17,36 +19,46 @@ db:
   redis_pwd: ""
   redis_db: 0
 
+# 自用
 sso:
   service_name: "签到助手"
   client_id: ""
   client_secret: ""
 
+# 邮件配置
 mail:
   smtp_server: ""
   port: "465"
   tls: true
   username: ""
   password: ""
+  # 邮件发送队列长度
   queue_buffer_size: 50
 
+# wx_pusher配置，用于推送签到提醒
 wx_pusher:
   app_token: ""
 
+# 腾讯云对象存储，用于存储用户上传的文件
 cos:
   bucket_url: ""
   base_path: ""
   secret_id: ""
   secret_key: ""
 
+# 是否接入51la统计，开启将在前端插入统计代码
 statistics_report:
   v6_51_la: true
   v6_51_la_js1: ''
   v6_51_la_js2: ''
 
+# 日志
 logger:
+  #输出到stdout
   stdout: true
+  #输出到文件
   storeFile: true
+  #远程汇报，需自行设计接受端
   remoteReport: false
   remoteReportUrl: "http://127.0.0.1/api/logUpload"
   remoteReportQueryKey: "?key=xxxxx"

@@ -15,7 +15,7 @@
 ```
 小明您好:
    您有一个新的打卡任务哦，截止日期2021-10-26 10:10:00，快快点击下方的链接签到吧~
-   https://qd.roy233.com/api/login?jwt=xxxx
+   https://qd.roy233.com/api/loginByToken?jwt=xxxx
 ```
 
 

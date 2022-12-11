@@ -32,7 +32,7 @@ func testTplHandler(c *gin.Context) {
 		returnErrorJson(c, "出现异常"+err.Error())
 		return
 	}
-	loginUrl := fmt.Sprintf("%s/api/login?jwt=%s.%s", config.General.BaseUrl, loginToken, Cipher.Sha256Hex([]byte(loginToken)))
+	loginUrl := fmt.Sprintf("%s/api/loginByToken?jwt=%s.%s", config.General.BaseUrl, loginToken, Cipher.Sha256Hex([]byte(loginToken)))
 
 	act := &dbAct{
 		Name:    "测试活动",

@@ -41,23 +41,35 @@ func init() {
 
 	router.Static("/static", "./static")
 
-	router.GET("/sso", ssoRedirectHandler)
+	//登录相关
+	if config.SSO.Enabled {
+		router.GET("/sso", ssoRedirectHandler)
+		router.GET("/api/ssoCallback", ssoCallBackHandler)
+	} else {
+		router.GET("/login", viewLogin)
+		router.GET("/register", viewRegister)
+		router.GET("/forget", viewRegister)
+
+		router.POST("/api/login", loginHandler)
+		router.POST("/api/forget", forgetHandler)
+		router.POST("/api/register", registerHandler)
+	}
 
 	// user view
 	userViewGroup := router.Group("/user")
 	userViewGroup.Use(UserMiddleware)
 	{
-		userViewGroup.GET("/reg", viewReg)
+		userViewGroup.GET("/init", viewInit)
 	}
 
 	//通用api
-	router.GET("/api/ssoCallback", ssoCallBackHandler)
-	router.GET("/api/login", loginHandler)
+	router.GET("/api/loginByToken", loginByTokenHandler)
 	router.POST("/api/logout", logoutHandler)
 	router.POST("/api/wxpusherCallback", wxpusherCallbackHandler)
 	router.GET("/file/:data", fileHandler)
 	router.GET("/url/:data", shortUrlHandler)
 	router.GET("/error/:data", viewError)
+	router.GET("/api/captcha", captchaHandler)
 
 	//用户api
 	userApiGroup := router.Group("/api/user")
